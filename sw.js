@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 const CACHE_NAME = 'tezkorish-real-pilot-v24';
+=======
+const CACHE_NAME = 'tezkorish-real-pilot-v23';
+>>>>>>> d79c5678bf98cbe155520f8fda70a4f4bce8accc
 const STATIC_ASSETS = [
   './manifest.json',
   './icons/icon-72.png',

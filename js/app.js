@@ -835,6 +835,7 @@ async function renderTelegramLoginOptions() {
   const localCard = document.querySelector('.telegram-auth-card.muted');
   if (!statusEl || !metaEl || !widgetHost || !btn) return;
 
+<<<<<<< HEAD
   // Server buildda lokal fallback bloki hech qachon ko‘rinmasin.
   const allowLocal = Boolean(PILOT_CONFIG?.allowLocalFallback) && !isServerPilotMode();
   if (localCard) localCard.classList.toggle('is-hidden', !allowLocal);
@@ -845,6 +846,8 @@ async function renderTelegramLoginOptions() {
   statusEl.textContent = 'Telegram login sozlanmoqda...';
   metaEl.textContent = 'Konfiguratsiya tekshirilmoqda...';
 
+=======
+>>>>>>> d79c5678bf98cbe155520f8fda70a4f4bce8accc
   let liveCfg = null;
   if (isServerPilotMode()) {
     liveCfg = await AuthAPI.telegramConfig();
@@ -854,6 +857,14 @@ async function renderTelegramLoginOptions() {
   const loginUrl = cfg.loginUrl || '';
   const hasWidget = Boolean(botUsername && widgetCallbackUrl);
   const hasDeepLink = Boolean(cfg.deepLinkUrl || loginUrl || botUsername);
+<<<<<<< HEAD
+=======
+  const allowLocal = Boolean(PILOT_CONFIG?.allowLocalFallback) && !isServerPilotMode();
+  if (localCard) localCard.classList.toggle('is-hidden', !allowLocal);
+
+  btn.textContent = cfg.loginButtonText || 'Telegram orqali kirish';
+  widgetHost.innerHTML = '';
+>>>>>>> d79c5678bf98cbe155520f8fda70a4f4bce8accc
 
   if (hasWidget) {
     statusEl.textContent = `Telegram login tayyor: @${botUsername}`;
@@ -2552,12 +2563,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   updateRuntimeNotes();
   initPost();
   clearUserUI();
+<<<<<<< HEAD
 
   // Real pilotda guest foydalanuvchi auth ekranda turganda remote write qilinmasin.
   if (!isServerPilotMode()) {
     Store.ensureSeeded();
   }
 
+=======
+>>>>>>> d79c5678bf98cbe155520f8fda70a4f4bce8accc
   const bootstrapped = await bootstrapServerAuthSession();
   if (bootstrapped) return;
   const handledTelegram = handleTelegramCallbackFromUrl();
