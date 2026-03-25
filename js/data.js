@@ -10,7 +10,7 @@ const SETTINGS = {
   activeJobLimit: 3,
   defaultExpiryHours: 24,
   closedRetentionHours: 72,
-  appVersion: 'real-pilot-v28',
+  appVersion: 'real-pilot-v29',
   demoAdminPhoneDigits: [],
 };
 
@@ -89,6 +89,16 @@ function getSessionUserSnapshot() {
   }
 }
 
+function dispatchRemoteUnauthorized() {
+  try {
+    localStorage.removeItem(STORAGE_KEYS.user);
+    sessionStorage.removeItem('tezkorish.authenticated');
+  } catch {}
+  try {
+    window.dispatchEvent(new CustomEvent('tezkorish:remote-unauthorized'));
+  } catch {}
+}
+
 
 async function remoteRequest(method, url, body, options = {}) {
   const res = await fetch(url, {
@@ -103,6 +113,7 @@ async function remoteRequest(method, url, body, options = {}) {
   if (!res.ok || payload?.ok === false) {
     const err = new Error(payload?.error || `Remote storage request failed (${res.status})`);
     err.status = res.status;
+    if (res.status === 401) dispatchRemoteUnauthorized();
     throw err;
   }
   return payload;
@@ -162,7 +173,7 @@ async function flushRemoteWriteQueue(options = {}) {
 function queueRemoteWrite(key, value, options = {}) {
   if (!shouldUseRemoteStorage()) return;
   const user = getSessionUserSnapshot();
-  if (!user && key !== STORAGE_KEYS.meta && key !== STORAGE_KEYS.settings) return;
+  if (!user && key !== STORAGE_KEYS.meta) return;
   remoteWriteQueue.set(key, value);
   const immediate = options.immediate || isImmediateRemoteKey(key);
   if (immediate) {
@@ -198,8 +209,7 @@ async function syncRemoteMirror() {
     return snapshot;
   } catch (err) {
     if (err?.status === 401) {
-      localStorage.removeItem(STORAGE_KEYS.user);
-      sessionStorage.removeItem('tezkorish.authenticated');
+      dispatchRemoteUnauthorized();
       return { ok: false, reason: 'unauthorized' };
     }
     throw err;

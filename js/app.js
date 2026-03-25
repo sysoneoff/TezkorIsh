@@ -194,6 +194,7 @@ let realtimeBusy = false;
 let realtimeIntervalId = null;
 let realtimeLastSignature = '';
 let presenceIntervalId = null;
+let authRedirectInProgress = false;
 
 async function fetchRealtimeSignature() {
   try {
@@ -218,16 +219,43 @@ async function fetchRealtimeSignature() {
   }
 }
 
+function stopBackgroundServices() {
+  if (realtimeIntervalId) clearInterval(realtimeIntervalId);
+  if (presenceIntervalId) clearInterval(presenceIntervalId);
+  realtimeIntervalId = null;
+  presenceIntervalId = null;
+  realtimeStarted = false;
+  realtimeBusy = false;
+  realtimeLastSignature = '';
+}
+
+function handleUnauthorizedState(reason = '') {
+  if (authRedirectInProgress) return;
+  authRedirectInProgress = true;
+  try { stopBackgroundServices(); } catch {}
+  try { Store.clearUser(); } catch {}
+  AppState.user = null;
+  clearUserUI();
+  try { sessionStorage.removeItem('tezkorish.authenticated'); } catch {}
+  if (reason) Toast.show(reason);
+  Router.go('auth-telegram', true);
+  setTimeout(() => { authRedirectInProgress = false; }, 800);
+}
+
 function startRealtimeRefresh() {
   if (realtimeStarted) return;
   realtimeStarted = true;
 
   const triggerRefresh = async (reason) => {
-    if (realtimeBusy || !AppState.user) return;
+    if (realtimeBusy || !AppState.user || authRedirectInProgress) return;
     realtimeBusy = true;
     try {
       if (isServerPilotMode() && typeof Store?.syncRemoteMirror === 'function') {
-        await Store.syncRemoteMirror();
+        const syncState = await Store.syncRemoteMirror();
+        if (syncState?.reason === 'unauthorized') {
+          handleUnauthorizedState('Sessiya tugagan. Qaytadan Telegram orqali kiring.');
+          return;
+        }
       }
       const nextSig = await fetchRealtimeSignature();
       if (nextSig && nextSig !== realtimeLastSignature) {
@@ -239,10 +267,7 @@ function startRealtimeRefresh() {
     } catch (err) {
       console.warn('realtime refresh error:', reason, err);
       if (String(err?.message || '').includes('Avval tizimga kiring') || String(err?.message || '').includes('(401)')) {
-        try { Store.clearUser(); } catch {}
-        AppState.user = null;
-        clearUserUI();
-        Router.go('auth-telegram', true);
+        handleUnauthorizedState('Sessiya tugagan. Qaytadan Telegram orqali kiring.');
       }
     } finally {
       realtimeBusy = false;
@@ -255,7 +280,7 @@ function startRealtimeRefresh() {
   });
   window.addEventListener('focus', () => { triggerRefresh('focus'); });
 
-  realtimeIntervalId = setInterval(() => { triggerRefresh('interval'); }, isServerPilotMode() ? 10000 : 5000);
+  realtimeIntervalId = setInterval(() => { triggerRefresh('interval'); }, isServerPilotMode() ? 15000 : 7000);
   triggerRefresh('initial');
 }
 
@@ -263,7 +288,7 @@ function startPresenceHeartbeat() {
   if (presenceIntervalId) return;
   presenceIntervalId = setInterval(() => {
     try { updatePresence(); } catch (err) { console.warn('presence heartbeat error:', err); }
-  }, 60000);
+  }, 90000);
 }
 
 function updatePresence() {
@@ -278,6 +303,10 @@ function startBackgroundServices() {
   startPresenceHeartbeat();
   startRealtimeRefresh();
 }
+
+window.addEventListener('tezkorish:remote-unauthorized', () => {
+  handleUnauthorizedState('Sessiya tugagan. Qaytadan Telegram orqali kiring.');
+});
 
 function escapeAttr(value) {
   return String(value ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -808,17 +837,16 @@ async function renderTelegramLoginOptions() {
   const widgetHost = document.getElementById('telegram-login-widget');
   const btn = document.getElementById('btn-telegram-login');
   const localCard = document.querySelector('.telegram-auth-card.muted');
-  const btnWrap = btn.closest('.telegram-auth-btn-wrap') || btn.parentElement;
+  const btnWrap = btn?.closest('.telegram-auth-btn-wrap') || btn?.parentElement;
   if (!statusEl || !metaEl || !widgetHost || !btn) return;
 
-  // Server buildda lokal fallback bloki hech qachon ko‘rinmasin.
   const allowLocal = Boolean(PILOT_CONFIG?.allowLocalFallback) && !isServerPilotMode();
   if (localCard) localCard.classList.toggle('is-hidden', !allowLocal);
-  if (isServerPilotMode() && btnWrap) btnWrap.classList.add('is-hidden');
 
   btn.textContent = cfg.loginButtonText || 'Telegram orqali kirish';
-  btn.classList.add('is-hidden');
   btn.disabled = true;
+  btn.classList.add('is-hidden');
+  if (btnWrap) btnWrap.classList.add('is-hidden');
   widgetHost.innerHTML = '';
   statusEl.textContent = 'Telegram login sozlanmoqda...';
   metaEl.textContent = 'Konfiguratsiya tekshirilmoqda...';
@@ -829,15 +857,15 @@ async function renderTelegramLoginOptions() {
   }
   const botUsername = cfg.botUsername || liveCfg?.botUsername || '';
   const widgetCallbackUrl = cfg.widgetCallbackUrl || liveCfg?.callbackUrl || '';
-  const loginUrl = cfg.loginUrl || '';
+  const loginUrl = cfg.loginUrl || liveCfg?.loginUrl || '';
   const hasWidget = Boolean(botUsername && widgetCallbackUrl);
-  const hasDeepLink = Boolean(cfg.deepLinkUrl || loginUrl || botUsername);
+  const hasFallbackLogin = Boolean(loginUrl || cfg.deepLinkUrl || botUsername);
 
   if (hasWidget) {
-    btn.classList.add('is-hidden');
-    btn.disabled = true;
     statusEl.textContent = `Telegram login tayyor: @${botUsername}`;
-    metaEl.textContent = 'Rasmiy Telegram website login widgeti ishlaydi. Telegram ma’lumoti backendda verify qilinadi va session cookie yaratiladi.';
+    metaEl.textContent = 'Telegram akkauntingiz orqali xavfsiz kirish mumkin. Widget chiqmasa, pastdagi tugmadan davom eting.';
+
+    let widgetReady = false;
     const script = document.createElement('script');
     script.async = true;
     script.src = 'https://telegram.org/js/telegram-widget.js?22';
@@ -845,43 +873,63 @@ async function renderTelegramLoginOptions() {
     script.setAttribute('data-size', 'large');
     script.setAttribute('data-auth-url', widgetCallbackUrl);
     script.setAttribute('data-request-access', 'write');
+    script.onload = () => { widgetReady = true; };
     script.onerror = () => {
       statusEl.textContent = 'Telegram widget yuklanmadi';
-      metaEl.textContent = 'Internet, adblock yoki brauzer cheklovi sabab widget yuklanmadi. Sahifani yangilang yoki boshqa brauzerda sinab ko‘ring.';
-      btn.classList.remove('is-hidden');
+      metaEl.textContent = 'Widget bloklangan yoki yuklanmadi. Pastdagi tugma bilan davom eting.';
       btn.disabled = false;
+      btn.classList.remove('is-hidden');
+      if (btnWrap) btnWrap.classList.remove('is-hidden');
     };
     widgetHost.appendChild(script);
+
+    setTimeout(() => {
+      const hasIframe = widgetHost.querySelector('iframe');
+      if (!hasIframe) {
+        btn.disabled = false;
+        btn.classList.remove('is-hidden');
+        if (btnWrap) btnWrap.classList.remove('is-hidden');
+        if (!widgetReady) {
+          statusEl.textContent = 'Telegram login tayyor';
+          metaEl.textContent = 'Widget bloklangan bo‘lishi mumkin. Pastdagi tugma orqali davom eting.';
+        }
+      }
+    }, 3500);
     return;
   }
 
-  if (!isServerPilotMode()) {
-    btn.classList.remove('is-hidden');
+  if (hasFallbackLogin) {
+    statusEl.textContent = botUsername ? `Telegram login tayyor: @${botUsername}` : 'Telegram login tayyor';
+    metaEl.textContent = 'Pastdagi tugma orqali Telegram login oynasini oching.';
     btn.disabled = false;
-  }
-  if (hasDeepLink && !isServerPilotMode()) {
-    statusEl.textContent = 'Telegram login tayyorlanmoqda';
-    metaEl.textContent = 'Bot username yoki login URL topildi. Shu tugma foydalanuvchini Telegram auth oqimiga olib boradi.';
+    btn.classList.remove('is-hidden');
+    if (btnWrap) btnWrap.classList.remove('is-hidden');
     return;
   }
 
-  btn.classList.add('is-hidden');
   statusEl.textContent = 'Telegram login hali sozlanmagan';
-  metaEl.textContent = 'Server .env faylida TELEGRAM_BOT_TOKEN va TELEGRAM_BOT_USERNAME kiriting, so‘ng auth callback URL ni ishlating.';
+  metaEl.textContent = 'Server .env faylida TELEGRAM_BOT_TOKEN va TELEGRAM_BOT_USERNAME kiriting.';
 }
 
-function startTelegramLogin() {
+async function startTelegramLogin() {
   const cfg = getTelegramPilotConfig();
-  if (cfg.loginUrl) {
-    window.location.href = cfg.loginUrl;
+  let liveCfg = null;
+  if (isServerPilotMode()) {
+    try { liveCfg = await AuthAPI.telegramConfig(); } catch {}
+  }
+  const loginUrl = cfg.loginUrl || liveCfg?.loginUrl || '';
+  const deepLinkUrl = cfg.deepLinkUrl || '';
+  const botUsername = cfg.botUsername || liveCfg?.botUsername || '';
+  if (loginUrl) {
+    window.location.href = loginUrl;
     return;
   }
-  if (cfg.deepLinkUrl) {
-    window.open(cfg.deepLinkUrl, '_blank', 'noopener');
+  if (deepLinkUrl) {
+    window.open(deepLinkUrl, '_blank', 'noopener');
     return;
   }
-  if (cfg.botUsername) {
-    window.open(`https://t.me/${sanitizeTelegramHandle(cfg.botUsername)}`, '_blank', 'noopener');
+  if (botUsername) {
+    window.open(`https://t.me/${sanitizeTelegramHandle(botUsername)}`, '_blank', 'noopener');
     return;
   }
   Toast.show('Telegram login sozlamasi topilmadi. Sahifani Ctrl+F5 bilan yangilang yoki admin deployni tekshirsin.');
@@ -964,6 +1012,9 @@ async function bootstrapServerAuthSession() {
     }
     if (state?.pendingTelegram && state.pendingTelegram.telegramUserId) {
       const fullName = normalizeDisplayName(`${state.pendingTelegram.firstName || ''} ${state.pendingTelegram.lastName || ''}`) || state.pendingTelegram.username || 'Telegram foydalanuvchi';
+      try { Store.clearUser(); } catch {}
+      AppState.user = null;
+      clearUserUI();
       try { sessionStorage.removeItem('tezkorish.authenticated'); } catch {}
       beginTelegramAuthProfileFlow({
         telegramUserId: state.pendingTelegram.telegramUserId,
@@ -984,6 +1035,9 @@ async function bootstrapServerAuthSession() {
     console.warn('bootstrapServerAuthSession failed:', err);
     if (isServerPilotMode()) { try { Store.clearUser(); } catch {} AppState.user = null; clearUserUI(); }
   }
+  try { Store.clearUser(); } catch {}
+  AppState.user = null;
+  clearUserUI();
   try { sessionStorage.removeItem('tezkorish.authenticated'); } catch {}
   return false;
 }

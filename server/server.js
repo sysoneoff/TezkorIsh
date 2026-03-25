@@ -43,7 +43,7 @@ function defaultDb() {
     updatedAt: nowIso(),
     storage: {
       global: {
-        'tezkorish.meta': { appVersion: 'real-pilot-v28', firstInstalledAt: Date.now(), seedInitialized: true },
+        'tezkorish.meta': { appVersion: 'real-pilot-v29', firstInstalledAt: Date.now(), seedInitialized: true },
         'tezkorish.jobs': [],
         'tezkorish.applications': [],
         'tezkorish.savedJobs': [],
@@ -336,7 +336,16 @@ async function handleApi(req, res, url) {
   }
 
   if (pathname === '/api/auth/telegram/config' && req.method === 'GET') {
-    return sendJson(res, 200, { ok: true, botUsername: TELEGRAM_BOT_USERNAME, callbackUrl: `${APP_BASE_URL}/api/auth/telegram/callback`, appBaseUrl: APP_BASE_URL, loginEnabled: Boolean(TELEGRAM_BOT_TOKEN && TELEGRAM_BOT_USERNAME) });
+    const botId = String(TELEGRAM_BOT_TOKEN || '').split(':')[0] || '';
+    const callbackUrl = `${APP_BASE_URL}/api/auth/telegram/callback`;
+    let loginUrl = '';
+    try {
+      const appOrigin = new URL(APP_BASE_URL).origin;
+      if (botId) {
+        loginUrl = `https://oauth.telegram.org/auth?bot_id=${encodeURIComponent(botId)}&origin=${encodeURIComponent(appOrigin)}&request_access=write&return_to=${encodeURIComponent(callbackUrl)}`;
+      }
+    } catch {}
+    return sendJson(res, 200, { ok: true, botUsername: TELEGRAM_BOT_USERNAME, callbackUrl, appBaseUrl: APP_BASE_URL, loginUrl, loginEnabled: Boolean(TELEGRAM_BOT_TOKEN && TELEGRAM_BOT_USERNAME) });
   }
 
   if (pathname === '/api/auth/telegram/callback' && req.method === 'GET') {
@@ -464,7 +473,7 @@ async function handleApi(req, res, url) {
     const userScoped = session?.userId ? (db.storage.users[session.userId] || {}) : {};
     return sendJson(res, 200, {
       ok: true,
-      appVersion: db.storage.global['tezkorish.meta']?.appVersion || 'real-pilot-v28',
+      appVersion: db.storage.global['tezkorish.meta']?.appVersion || 'real-pilot-v29',
       authenticated: Boolean(authUser),
       authUser,
       global: db.storage.global,
