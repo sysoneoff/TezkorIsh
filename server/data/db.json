@@ -1,0 +1,30 @@
+{
+  "createdAt": "2026-03-25T03:52:04.028Z",
+  "updatedAt": "2026-03-25T03:52:04.160Z",
+  "storage": {
+    "global": {
+      "tezkorish.meta": {
+        "appVersion": "real-pilot-v21",
+        "firstInstalledAt": 1774410724028,
+        "seedInitialized": true
+      },
+      "tezkorish.jobs": [],
+      "tezkorish.applications": [],
+      "tezkorish.savedJobs": [],
+      "tezkorish.reports": [],
+      "tezkorish.users": [],
+      "tezkorish.contracts": [],
+      "tezkorish.reviews": [],
+      "tezkorish.chats": []
+    },
+    "users": {}
+  },
+  "sessions": {
+    "sess_039c020c5997327dee8c1a97": {
+      "createdAt": "2026-03-25T03:52:04.160Z",
+      "updatedAt": "2026-03-25T03:52:04.160Z",
+      "userId": null,
+      "pendingTelegram": null
+    }
+  }
+}

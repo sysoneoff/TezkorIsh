@@ -1,0 +1,10 @@
+{
+  "name": "tezkorish-real-pilot-server",
+  "version": "21.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  }
+}
