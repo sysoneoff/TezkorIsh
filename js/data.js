@@ -10,7 +10,7 @@ const SETTINGS = {
   activeJobLimit: 3,
   defaultExpiryHours: 24,
   closedRetentionHours: 72,
-  appVersion: 'real-pilot-v25',
+  appVersion: 'real-pilot-v26',
   demoAdminPhoneDigits: [],
 };
 
@@ -42,6 +42,48 @@ function getApiBaseUrl() {
   return String(cfg.apiBaseUrl || '').trim().replace(/\/$/, '');
 }
 
+
+function normalizeRemoteAuthUser(user) {
+  if (!user) return null;
+  const roleValue = String(user.role || '').trim().toLowerCase();
+  const normalizedRole = ['ishchi', 'worker'].includes(roleValue)
+    ? 'ishchi'
+    : (['beruvchi', 'ish beruvchi', 'ish_beruvchi', 'employer', 'admin'].includes(roleValue) ? 'beruvchi' : (roleValue || null));
+  const phoneDigits = String(user.phoneDigits || user.phone || '').replace(/\D/g, '');
+  return {
+    ...user,
+    role: normalizedRole,
+    phoneDigits,
+    phone: user.phone || (phoneDigits ? ('+998 ' + phoneDigits) : ''),
+    telegramUserId: String(user.telegramUserId || user.telegram_user_id || ''),
+    telegramUsername: String(user.telegramUsername || user.telegram_username || user.username || ''),
+    telegramPhotoUrl: String(user.telegramPhotoUrl || user.photo_url || ''),
+    authProvider: user.authProvider || (user.telegramUserId || user.telegram_user_id ? 'telegram' : 'local'),
+    rating: Number(user.rating || 0),
+    completedJobs: Number(user.completedJobs || 0),
+    availability: {
+      onDuty: false,
+      lastShiftStartedAt: null,
+      lastSeenJobAt: 0,
+      ...(user.availability || {}),
+    },
+    isAdmin: Boolean(user.isAdmin),
+  };
+}
+
+function getSessionUserSnapshot() {
+  try {
+    const inMemory = normalizeRemoteAuthUser(typeof AppState !== 'undefined' ? AppState.user : null);
+    if (inMemory && inMemory.id) return inMemory;
+  } catch {}
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.user);
+    if (!raw) return null;
+    return normalizeRemoteAuthUser(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
 
 function remoteRequestSync(method, url, body) {
   const xhr = new XMLHttpRequest();
@@ -75,7 +117,7 @@ const remoteWriteQueue = new Map();
 
 function queueRemoteWrite(key, value) {
   if (!shouldUseRemoteStorage()) return;
-  const user = getSessionUser();
+  const user = getSessionUserSnapshot();
   if (!user && key !== STORAGE_KEYS.meta && key !== STORAGE_KEYS.settings) return;
   remoteWriteQueue.set(key, value);
   if (remoteWriteTimer) return;
@@ -107,7 +149,7 @@ async function syncRemoteMirror() {
     localStorage.setItem(key, JSON.stringify(value));
   });
   if (snapshot?.authUser) {
-    localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(normalizeUser(snapshot.authUser)));
+    localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(normalizeRemoteAuthUser(snapshot.authUser)));
   } else {
     localStorage.removeItem(STORAGE_KEYS.user);
   }
