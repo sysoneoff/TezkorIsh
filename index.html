@@ -26,22 +26,22 @@
        DESIGN TOKENS
        ═══════════════════════════════════════ */
     :root {
-      --bg:        #0A0A0A;
-      --bg-2:      #111111;
-      --bg-3:      #1A1A1A;
-      --bg-4:      #222222;
-      --line:      #2A2A2A;
-      --line-2:    #333333;
-      --muted:     #555555;
-      --text-3:    #888888;
-      --text-2:    #BBBBBB;
-      --text:      #F0F0F0;
+      --bg:        #07101d;
+      --bg-2:      #0c1626;
+      --bg-3:      #101d31;
+      --bg-4:      #16263d;
+      --line:      #1d3350;
+      --line-2:    #29456b;
+      --muted:     #7d95b5;
+      --text-3:    #95aac8;
+      --text-2:    #c5d7ee;
+      --text:      #edf6ff;
       --white:     #FFFFFF;
 
-      --accent:    #E8FF3A;
-      --accent-2:  #C8E000;
-      --accent-dim:#2A2E00;
-      --accent-fg: #0A0A0A;
+      --accent:    #35b9ff;
+      --accent-2:  #93e3ff;
+      --accent-dim:#0f3150;
+      --accent-fg: #04111d;
 
       --red:       #FF4545;
       --green:     #3DFF8F;
@@ -1433,7 +1433,17 @@
        SCROLLBAR
        ═══════════════════════════════════════ */
     ::-webkit-scrollbar { width: 0; height: 0; }
-  </style>
+  
+    /* SysOne force theme */
+    body, .screen, #mobile-view { background: linear-gradient(180deg,#07101d 0%,#0b1628 100%); }
+    .sidebar-logo-text span, .si-badge, .btn-primary, .sidebar-post-btn { color: var(--accent-fg); }
+    .page-hero, .home-hero, .profile-hero, .screen-header, .section-card, .activity-card, .job-card, .card, .modal-sheet { background: rgba(10,23,40,0.92) !important; color: var(--text) !important; border-color: var(--line) !important; }
+    .text-muted, .muted, .activity-card-sub, .activity-meta, .profile-role-text, .helper-text, .field-help, .empty-desc { color: var(--text-2) !important; }
+    .telegram-auth-card, .onboarding-card, .settings-card { background: rgba(10,23,40,0.92) !important; border:1px solid var(--line); }
+    .cat-chip.active, .tab-chip.active, .filter-chip.active { background: linear-gradient(135deg,#35b9ff,#93e3ff) !important; color:#04111d !important; }
+    .sidebar-item.active { background: rgba(53,185,255,0.18) !important; }
+
+</style>
 </head>
 <body>
 
@@ -2145,9 +2155,6 @@
 <div id="toast" aria-live="polite"></div>
 
 <!-- Scripts -->
-<script src="js/pilot-config.js"></script>
-<script src="js/data.js"></script>
-<script src="js/router.js"></script>
 <script src="js/pilot-config.js"></script>
 <script src="js/data.js"></script>
 <script src="js/router.js"></script>

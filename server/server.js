@@ -43,7 +43,7 @@ function defaultDb() {
     updatedAt: nowIso(),
     storage: {
       global: {
-        'tezkorish.meta': { appVersion: 'real-pilot-v27', firstInstalledAt: Date.now(), seedInitialized: true },
+        'tezkorish.meta': { appVersion: 'real-pilot-v28', firstInstalledAt: Date.now(), seedInitialized: true },
         'tezkorish.jobs': [],
         'tezkorish.applications': [],
         'tezkorish.savedJobs': [],
@@ -464,7 +464,7 @@ async function handleApi(req, res, url) {
     const userScoped = session?.userId ? (db.storage.users[session.userId] || {}) : {};
     return sendJson(res, 200, {
       ok: true,
-      appVersion: db.storage.global['tezkorish.meta']?.appVersion || 'real-pilot-v27',
+      appVersion: db.storage.global['tezkorish.meta']?.appVersion || 'real-pilot-v28',
       authenticated: Boolean(authUser),
       authUser,
       global: db.storage.global,

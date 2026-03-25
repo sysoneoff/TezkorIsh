@@ -10,7 +10,7 @@ const SETTINGS = {
   activeJobLimit: 3,
   defaultExpiryHours: 24,
   closedRetentionHours: 72,
-  appVersion: 'real-pilot-v27',
+  appVersion: 'real-pilot-v28',
   demoAdminPhoneDigits: [],
 };
 
@@ -77,6 +77,10 @@ function getSessionUserSnapshot() {
     if (inMemory && inMemory.id) return inMemory;
   } catch {}
   try {
+    const cfg = getPilotConfigSafe();
+    const serverMode = String(cfg.pilotMode || '').toLowerCase() === 'server';
+    const bootOk = sessionStorage.getItem('tezkorish.authenticated') === '1';
+    if (serverMode && !bootOk) return null;
     const raw = localStorage.getItem(STORAGE_KEYS.user);
     if (!raw) return null;
     return normalizeRemoteAuthUser(JSON.parse(raw));
@@ -97,7 +101,9 @@ async function remoteRequest(method, url, body, options = {}) {
   let payload = null;
   try { payload = await res.json(); } catch { payload = null; }
   if (!res.ok || payload?.ok === false) {
-    throw new Error(payload?.error || `Remote storage request failed (${res.status})`);
+    const err = new Error(payload?.error || `Remote storage request failed (${res.status})`);
+    err.status = res.status;
+    throw err;
   }
   return payload;
 }
@@ -172,21 +178,32 @@ function queueRemoteWrite(key, value, options = {}) {
 async function syncRemoteMirror() {
   if (!shouldUseRemoteStorage()) return { ok: false, reason: 'remote-off' };
   const apiBase = getApiBaseUrl();
-  const snapshot = await remoteRequest('GET', `${apiBase}/storage/snapshot`);
-  const global = snapshot?.global || {};
-  Object.entries(global).forEach(([key, value]) => {
-    localStorage.setItem(key, JSON.stringify(value));
-  });
-  const userScoped = snapshot?.userScoped || {};
-  Object.entries(userScoped).forEach(([key, value]) => {
-    localStorage.setItem(key, JSON.stringify(value));
-  });
-  if (snapshot?.authUser) {
-    localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(normalizeRemoteAuthUser(snapshot.authUser)));
-  } else {
-    localStorage.removeItem(STORAGE_KEYS.user);
+  try {
+    const snapshot = await remoteRequest('GET', `${apiBase}/storage/snapshot`);
+    const global = snapshot?.global || {};
+    Object.entries(global).forEach(([key, value]) => {
+      localStorage.setItem(key, JSON.stringify(value));
+    });
+    const userScoped = snapshot?.userScoped || {};
+    Object.entries(userScoped).forEach(([key, value]) => {
+      localStorage.setItem(key, JSON.stringify(value));
+    });
+    if (snapshot?.authUser) {
+      localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(normalizeRemoteAuthUser(snapshot.authUser)));
+      sessionStorage.setItem('tezkorish.authenticated', '1');
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.user);
+      sessionStorage.removeItem('tezkorish.authenticated');
+    }
+    return snapshot;
+  } catch (err) {
+    if (err?.status === 401) {
+      localStorage.removeItem(STORAGE_KEYS.user);
+      sessionStorage.removeItem('tezkorish.authenticated');
+      return { ok: false, reason: 'unauthorized' };
+    }
+    throw err;
   }
-  return snapshot;
 }
 
 function shouldUseRemoteStorage() {
@@ -339,7 +356,7 @@ const Store = (() => {
 
   function loadSettingsRaw() {
     return safeRead(STORAGE_KEYS.settings, {
-      theme: 'classic',
+      theme: 'sysone',
       preferredCats: [],
       nearbyRadiusKm: 10,
       workerLocation: null,

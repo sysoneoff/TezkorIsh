@@ -1,6 +1,6 @@
 // ═══════════════════════════════
 // TezkorIsh — App Logic v6.0
-// real pilot web build v24
+// real pilot web build v28
 // ═══════════════════════════════
 'use strict';
 
@@ -131,7 +131,7 @@ const AuthAPI = {
 function getAppSettings() {
   return typeof Store?.getSettings === 'function'
     ? Store.getSettings()
-    : { theme: 'classic', preferredCats: [], nearbyRadiusKm: 10, workerLocation: null, workerAddress: '' };
+    : { theme: 'sysone', preferredCats: [], nearbyRadiusKm: 10, workerLocation: null, workerAddress: '' };
 }
 
 function saveAppSettings(patch) {
@@ -143,7 +143,7 @@ function saveAppSettings(patch) {
 }
 
 function applyTheme(theme) {
-  document.documentElement.setAttribute('data-theme', theme || 'classic');
+  document.documentElement.setAttribute('data-theme', 'sysone');
 }
 
 function normalizeDisplayName(name) {
@@ -238,6 +238,12 @@ function startRealtimeRefresh() {
       }
     } catch (err) {
       console.warn('realtime refresh error:', reason, err);
+      if (String(err?.message || '').includes('Avval tizimga kiring') || String(err?.message || '').includes('(401)')) {
+        try { Store.clearUser(); } catch {}
+        AppState.user = null;
+        clearUserUI();
+        Router.go('auth-telegram', true);
+      }
     } finally {
       realtimeBusy = false;
     }
@@ -463,9 +469,7 @@ function renderSettingsScreen() {
   body.innerHTML = `
     <div class="profile-section about-page-section">
       <div class="psec-title">Ilova mavzusi</div>
-      <div class="theme-grid">
-        ${['classic','sysone','dark','white'].map(theme => `<button class="theme-card ${settings.theme === theme ? 'active' : ''}" onclick="setTheme('${theme}')">${theme === 'classic' ? 'Classic' : theme === 'sysone' ? 'SysOne' : theme === 'dark' ? 'Dark' : 'White'}</button>`).join('')}
-      </div>
+      <div class="settings-note">SysOne theme doimiy yoqilgan.</div>
     </div>
     <div class="profile-section about-page-section">
       <div class="psec-title">Ishchi filtrlari</div>
@@ -696,6 +700,14 @@ function clearUserUI() {
 }
 
 function initSplash() {
+  if (isServerPilotMode()) {
+    AppState.user = null;
+    try { Store.clearUser(); } catch {}
+    clearUserUI();
+    clearAuthDraft();
+    setTimeout(() => Router.go('auth-telegram', true), 100);
+    return;
+  }
   const existingUser = Store.loadUser();
   if (existingUser && Store.isValidUser(existingUser)) {
     AppState.user = existingUser;
@@ -711,6 +723,7 @@ function initSplash() {
   clearAuthDraft();
   setTimeout(() => Router.go('onboarding'), 1200);
 }
+
 
 function obNext() {
   const track = document.querySelector('.ob-slides-track');
@@ -795,11 +808,13 @@ async function renderTelegramLoginOptions() {
   const widgetHost = document.getElementById('telegram-login-widget');
   const btn = document.getElementById('btn-telegram-login');
   const localCard = document.querySelector('.telegram-auth-card.muted');
+  const btnWrap = btn.closest('.telegram-auth-btn-wrap') || btn.parentElement;
   if (!statusEl || !metaEl || !widgetHost || !btn) return;
 
   // Server buildda lokal fallback bloki hech qachon ko‘rinmasin.
   const allowLocal = Boolean(PILOT_CONFIG?.allowLocalFallback) && !isServerPilotMode();
   if (localCard) localCard.classList.toggle('is-hidden', !allowLocal);
+  if (isServerPilotMode() && btnWrap) btnWrap.classList.add('is-hidden');
 
   btn.textContent = cfg.loginButtonText || 'Telegram orqali kirish';
   btn.classList.add('is-hidden');
@@ -885,6 +900,7 @@ function beginTelegramAuthProfileFlow(payload) {
       avatar: existing.avatar || payload.photoUrl || existing.telegramPhotoUrl || '',
       authProvider: 'telegram',
     });
+    try { sessionStorage.setItem('tezkorish.authenticated', '1'); } catch {}
     clearAuthDraft();
     hydrateUserUI();
     initHome();
@@ -933,6 +949,7 @@ async function bootstrapServerAuthSession() {
         try { await Store.syncRemoteMirror(); } catch (err) { console.warn('syncRemoteMirror bootstrap failed:', err); }
       }
       AppState.user = typeof Store?.loadUser === 'function' ? (Store.loadUser() || state.user) : state.user;
+      try { sessionStorage.setItem('tezkorish.authenticated', '1'); } catch {}
       hydrateUserUI();
       Router.go('home', true);
       try {
@@ -947,6 +964,7 @@ async function bootstrapServerAuthSession() {
     }
     if (state?.pendingTelegram && state.pendingTelegram.telegramUserId) {
       const fullName = normalizeDisplayName(`${state.pendingTelegram.firstName || ''} ${state.pendingTelegram.lastName || ''}`) || state.pendingTelegram.username || 'Telegram foydalanuvchi';
+      try { sessionStorage.removeItem('tezkorish.authenticated'); } catch {}
       beginTelegramAuthProfileFlow({
         telegramUserId: state.pendingTelegram.telegramUserId,
         username: state.pendingTelegram.username || '',
@@ -958,14 +976,18 @@ async function bootstrapServerAuthSession() {
       return true;
     }
     if (state?.pendingTelegram?.error) {
+      try { sessionStorage.removeItem('tezkorish.authenticated'); } catch {}
       Toast.show(state.pendingTelegram.error);
       clearTelegramParamsFromUrl();
     }
   } catch (err) {
     console.warn('bootstrapServerAuthSession failed:', err);
+    if (isServerPilotMode()) { try { Store.clearUser(); } catch {} AppState.user = null; clearUserUI(); }
   }
+  try { sessionStorage.removeItem('tezkorish.authenticated'); } catch {}
   return false;
 }
+
 
 function submitPhone() {
   const phone = digitsOnly(document.getElementById('phone-input').value);
@@ -2503,6 +2525,7 @@ function resetDemoConfirm() {
 async function logout() {
   document.getElementById('success-modal').classList.remove('open');
   if (isServerPilotMode()) { try { await AuthAPI.logout(); } catch (err) { console.warn('logout api failed', err); } }
+  try { sessionStorage.removeItem('tezkorish.authenticated'); } catch {}
   Store.clearUser();
   if (dutyPulseTimer) clearInterval(dutyPulseTimer);
   dutyPulseTimer = null;
@@ -2543,8 +2566,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const bootstrapped = await bootstrapServerAuthSession();
   if (bootstrapped) return;
+  if (isServerPilotMode()) { try { Store.clearUser(); } catch {} AppState.user = null; clearUserUI(); }
   const handledTelegram = handleTelegramCallbackFromUrl();
   if (handledTelegram) return;
   await renderTelegramLoginOptions();
-  initSplash();
+  if (isServerPilotMode()) {
+    Router.go('auth-telegram', true);
+  } else {
+    initSplash();
+  }
 });

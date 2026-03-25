@@ -7,16 +7,16 @@
 
 /* ── CSS Variables ── */
 :root {
-  --primary:       #FF5A1F;
-  --primary-dark:  #D94710;
-  --primary-light: #FF8555;
-  --primary-bg:    #FFF5F0;
-  --bg:            #F7F3EE;
-  --bg-card:       #FFFFFF;
-  --text:          #1A1207;
-  --text-muted:    #8B7D6B;
-  --text-light:    #C4B8A8;
-  --border:        #EDE5DA;
+  --primary:       #2fb9ff;
+  --primary-dark:  #1688c8;
+  --primary-light: #8fe7ff;
+  --primary-bg:    #0f2238;
+  --bg:            #07101d;
+  --bg-card:       #0d1a2b;
+  --text:          #edf6ff;
+  --text-muted:    #9db2c9;
+  --text-light:    #6e87a3;
+  --border:        #1d3350;
   --success:       #27AE60;
   --warning:       #F39C12;
   --danger:        #E74C3C;
@@ -25,7 +25,7 @@
   --shadow-sm:   0 1px 6px rgba(26,18,7,0.06);
   --shadow:      0 4px 16px rgba(26,18,7,0.10);
   --shadow-lg:   0 8px 32px rgba(26,18,7,0.14);
-  --shadow-primary: 0 4px 20px rgba(255,90,31,0.30);
+  --shadow-primary: 0 10px 30px rgba(47,185,255,0.25);
 
   --radius-xs: 8px;
   --radius-sm: 12px;
@@ -2174,7 +2174,7 @@ input[type=number]::-webkit-inner-spin-button { display: none; }
 html[data-theme='classic'] {
   --primary: #FF5A1F;
   --primary-dark: #D94710;
-  --primary-light: #FF8555;
+  --primary-light: #8fe7ff;
   --primary-bg: #FFF5F0;
   --bg: #F7F3EE;
   --bg-card: #FFFFFF;
@@ -2184,18 +2184,19 @@ html[data-theme='classic'] {
   --border: #EDE5DA;
 }
 html[data-theme='sysone'] {
-  --primary: #27C6F3;
-  --primary-dark: #0f9cc5;
-  --primary-light: #7be0fb;
-  --primary-bg: #eafaff;
-  --bg: #eef7fb;
-  --bg-card: #ffffff;
-  --text: #0d2230;
-  --text-muted: #577282;
-  --text-light: #86a5b6;
-  --border: #d3eaf2;
-  --shadow-primary: 0 4px 20px rgba(39,198,243,0.25);
+  --primary: #35b9ff;
+  --primary-dark: #1688c8;
+  --primary-light: #93e3ff;
+  --primary-bg: #0e2238;
+  --bg: #07101d;
+  --bg-card: #0d1a2b;
+  --text: #edf6ff;
+  --text-muted: #a4bad0;
+  --text-light: #6f89a3;
+  --border: #1c3452;
+  --shadow-primary: 0 10px 30px rgba(53,185,255,0.28);
 }
+
 html[data-theme='dark'] {
   --primary: #36b8ff;
   --primary-dark: #1992d6;
@@ -2335,9 +2336,19 @@ html[data-theme='white'] {
 .chat-compose { display:flex; gap:8px; margin-top:12px; align-items:center; }
 .chat-compose .text-field { flex:1; }
 html[data-theme='sysone'] {
-  --text-muted: #355667;
-  --text-light: #537181;
+  --primary: #35b9ff;
+  --primary-dark: #1688c8;
+  --primary-light: #93e3ff;
+  --primary-bg: #0e2238;
+  --bg: #07101d;
+  --bg-card: #0d1a2b;
+  --text: #edf6ff;
+  --text-muted: #a4bad0;
+  --text-light: #6f89a3;
+  --border: #1c3452;
+  --shadow-primary: 0 10px 30px rgba(53,185,255,0.28);
 }
+
 html[data-theme='dark'] {
   --text-muted: #b5c6d3;
   --text-light: #90a6b5;
@@ -2467,3 +2478,9 @@ html[data-theme='white'] {
 }
 
 #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+
+/* v28 sysone cleanup */
+.theme-grid,.theme-card{display:none !important;}
+.settings-note{padding:12px 14px;border:1px solid var(--border);border-radius:14px;background:rgba(53,185,255,0.08);color:var(--text);font-weight:600;}
+.telegram-auth-card.muted.is-hidden{display:none !important;}
