@@ -39,7 +39,7 @@ function defaultDb() {
     updatedAt: nowIso(),
     storage: {
       global: {
-        'tezkorish.meta': { appVersion: 'real-pilot-v22', firstInstalledAt: Date.now(), seedInitialized: true },
+        'tezkorish.meta': { appVersion: 'real-pilot-v23', firstInstalledAt: Date.now(), seedInitialized: true },
         'tezkorish.jobs': [],
         'tezkorish.applications': [],
         'tezkorish.savedJobs': [],

@@ -835,15 +835,16 @@ async function renderTelegramLoginOptions() {
   const localCard = document.querySelector('.telegram-auth-card.muted');
   if (!statusEl || !metaEl || !widgetHost || !btn) return;
 
-  if (localCard) localCard.classList.toggle('is-hidden', !Boolean(PILOT_CONFIG?.allowLocalFallback));
-
   let liveCfg = null;
   if (isServerPilotMode()) liveCfg = await AuthAPI.telegramConfig();
   const botUsername = cfg.botUsername || liveCfg?.botUsername || '';
   const widgetCallbackUrl = cfg.widgetCallbackUrl || liveCfg?.callbackUrl || '';
   const loginUrl = cfg.loginUrl || '';
-  const hasWidget = botUsername && widgetCallbackUrl;
-  const hasDeepLink = cfg.deepLinkUrl || loginUrl || botUsername;
+  const hasWidget = Boolean(botUsername && widgetCallbackUrl);
+  const hasDeepLink = Boolean(cfg.deepLinkUrl || loginUrl || botUsername);
+  const allowLocal = Boolean(PILOT_CONFIG?.allowLocalFallback) && !isServerPilotMode();
+  if (localCard) localCard.classList.toggle('is-hidden', !allowLocal);
+
   btn.textContent = cfg.loginButtonText || 'Telegram orqali kirish';
   widgetHost.innerHTML = '';
 
@@ -857,6 +858,11 @@ async function renderTelegramLoginOptions() {
     script.setAttribute('data-size', 'large');
     script.setAttribute('data-auth-url', widgetCallbackUrl);
     script.setAttribute('data-request-access', 'write');
+    script.onerror = () => {
+      statusEl.textContent = 'Telegram widget yuklanmadi';
+      metaEl.textContent = 'Internet, adblock yoki brauzer cheklovi sabab widget yuklanmadi. Sahifani yangilang yoki boshqa brauzerda sinab ko‘ring.';
+      btn.classList.remove('is-hidden');
+    };
     widgetHost.appendChild(script);
     btn.classList.add('is-hidden');
     return;
@@ -887,7 +893,7 @@ function startTelegramLogin() {
     window.open(`https://t.me/${sanitizeTelegramHandle(cfg.botUsername)}`, '_blank', 'noopener');
     return;
   }
-  Toast.show('Avval js/pilot-config.js ichida Telegram login sozlamalarini kiriting.');
+  Toast.show('Telegram login sozlamasi topilmadi. Sahifani Ctrl+F5 bilan yangilang yoki admin deployni tekshirsin.');
 }
 
 function beginTelegramAuthProfileFlow(payload) {
@@ -948,8 +954,14 @@ async function bootstrapServerAuthSession() {
     if (state?.authenticated && state.user) {
       AppState.user = state.user;
       hydrateUserUI();
-      initHome();
       Router.go('home', true);
+      try {
+        initHome();
+      } catch (err) {
+        console.error('initHome after bootstrap failed:', err);
+        Toast.show('Bosh sahifani yuklashda xato bo‘ldi. Sahifani yangilang.');
+      }
+      clearTelegramParamsFromUrl();
       return true;
     }
     if (state?.pendingTelegram && state.pendingTelegram.telegramUserId) {
@@ -961,10 +973,12 @@ async function bootstrapServerAuthSession() {
         fullName,
         verified: true,
       });
+      clearTelegramParamsFromUrl();
       return true;
     }
     if (state?.pendingTelegram?.error) {
       Toast.show(state.pendingTelegram.error);
+      clearTelegramParamsFromUrl();
     }
   } catch (err) {
     console.warn('bootstrapServerAuthSession failed:', err);
@@ -2532,10 +2546,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   syncHelpCenterUI();
   updateRuntimeNotes();
   initPost();
-  await renderTelegramLoginOptions();
   clearUserUI();
+  const bootstrapped = await bootstrapServerAuthSession();
+  if (bootstrapped) return;
   const handledTelegram = handleTelegramCallbackFromUrl();
   if (handledTelegram) return;
-  const bootstrapped = await bootstrapServerAuthSession();
-  if (!bootstrapped) initSplash();
+  await renderTelegramLoginOptions();
+  initSplash();
 });
