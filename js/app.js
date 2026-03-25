@@ -188,120 +188,89 @@ function clearTelegramParamsFromUrl() {
   window.history.replaceState({}, document.title, url.pathname + (url.search ? url.search : '') + url.hash);
 }
 
-function getRealtimeSignature() {
+
+let realtimeStarted = false;
+let realtimeBusy = false;
+let realtimeIntervalId = null;
+let realtimeLastSignature = '';
+let presenceIntervalId = null;
+
+async function fetchRealtimeSignature() {
   try {
     if (isServerPilotMode()) {
-      const xhr = new XMLHttpRequest();
-      xhr.open('GET', getPilotApi('/state/signature'), false);
-      xhr.withCredentials = true;
-      xhr.send(null);
-      if (xhr.status >= 200 && xhr.status < 300) {
-        const payload = xhr.responseText ? JSON.parse(xhr.responseText) : null;
+      const response = await fetch(getPilotApi('/state/signature'), { credentials: 'include' });
+      if (response.ok) {
+        const payload = await response.json();
         if (payload?.signature) return payload.signature;
       }
+      return '';
     }
     const keys = [
-      'tezkorish.user',
-      'tezkorish.users',
-      'tezkorish.jobs',
-      'tezkorish.applications',
-      'tezkorish.reports',
-      'tezkorish.savedJobs',
-      'tezkorish.contracts',
-      'tezkorish.reviews',
-      'tezkorish.chats',
-      'tezkorish.settings'
+      'tezkorish.user','tezkorish.users','tezkorish.jobs','tezkorish.applications','tezkorish.reports',
+      'tezkorish.savedJobs','tezkorish.contracts','tezkorish.reviews','tezkorish.chats','tezkorish.settings'
     ];
     return keys.map(key => {
       const value = localStorage.getItem(key) || '';
       return `${key}:${value.length}:${value.slice(-32)}`;
     }).join('|');
   } catch {
-    return String(Date.now());
-  }
-}
-
-function refreshCurrentScreen(reason = 'manual') {
-  try {
-    if (!AppState.user) return;
-    const current = typeof Router?.current === 'function' ? Router.current() : null;
-    AppState.user = typeof Store?.loadUser === 'function' ? (Store.loadUser() || AppState.user) : AppState.user;
-    hydrateUserUI();
-    renderUserPresenceBadges();
-    updateNotificationBadge();
-    updateProfileStats();
-    switch (current) {
-      case 'home': {
-        renderCategories();
-        renderHomeQuickFilters();
-        renderJobs(getFilteredJobs());
-        updateHomeStats();
-        syncWorkerDutyUI();
-        break;
-      }
-      case 'chats':
-        renderActivity();
-        break;
-      case 'detail':
-        if (AppState.currentJobId) openDetail(AppState.currentJobId);
-        break;
-      case 'saved':
-        renderSavedJobs();
-        break;
-      case 'profile':
-        syncWorkerDutyUI();
-        break;
-      case 'admin':
-        renderAdmin();
-        break;
-      case 'settings':
-        renderSettingsScreen();
-        break;
-      case 'contracts':
-        renderContracts();
-        break;
-      case 'about':
-        syncHelpCenterUI();
-        break;
-      default:
-        break;
-    }
-  } catch (err) {
-    console.warn('refreshCurrentScreen error:', reason, err);
+    return '';
   }
 }
 
 function startRealtimeRefresh() {
-  let lastSig = getRealtimeSignature();
-  const tick = () => {
+  if (realtimeStarted) return;
+  realtimeStarted = true;
+
+  const triggerRefresh = async (reason) => {
+    if (realtimeBusy || !AppState.user) return;
+    realtimeBusy = true;
     try {
-      updatePresence();
-      const nextSig = getRealtimeSignature();
-      if (nextSig !== lastSig) {
-        lastSig = nextSig;
-        refreshCurrentScreen('realtime-tick');
+      if (isServerPilotMode() && typeof Store?.syncRemoteMirror === 'function') {
+        await Store.syncRemoteMirror();
+      }
+      const nextSig = await fetchRealtimeSignature();
+      if (nextSig && nextSig !== realtimeLastSignature) {
+        realtimeLastSignature = nextSig;
+        refreshCurrentScreen(reason);
       } else {
         renderUserPresenceBadges();
       }
     } catch (err) {
-      console.warn('realtime tick error:', err);
+      console.warn('realtime refresh error:', reason, err);
+    } finally {
+      realtimeBusy = false;
     }
   };
-  window.addEventListener('storage', () => {
-    lastSig = getRealtimeSignature();
-    refreshCurrentScreen('storage-event');
-  });
+
+  window.addEventListener('storage', () => { triggerRefresh('storage-event'); });
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      lastSig = getRealtimeSignature();
-      refreshCurrentScreen('visibility');
-    }
+    if (document.visibilityState === 'visible') triggerRefresh('visibility');
   });
-  window.addEventListener('focus', () => {
-    lastSig = getRealtimeSignature();
-    refreshCurrentScreen('focus');
-  });
-  setInterval(tick, isServerPilotMode() ? 5000 : 2500);
+  window.addEventListener('focus', () => { triggerRefresh('focus'); });
+
+  realtimeIntervalId = setInterval(() => { triggerRefresh('interval'); }, isServerPilotMode() ? 10000 : 5000);
+  triggerRefresh('initial');
+}
+
+function startPresenceHeartbeat() {
+  if (presenceIntervalId) return;
+  presenceIntervalId = setInterval(() => {
+    try { updatePresence(); } catch (err) { console.warn('presence heartbeat error:', err); }
+  }, 60000);
+}
+
+function updatePresence() {
+  if (AppState.user && typeof Store?.touchUserPresence === 'function') {
+    AppState.user = Store.touchUserPresence(AppState.user.id) || AppState.user;
+    renderUserPresenceBadges();
+  }
+}
+
+function startBackgroundServices() {
+  if (!AppState.user) return;
+  startPresenceHeartbeat();
+  startRealtimeRefresh();
 }
 
 function escapeAttr(value) {
@@ -841,6 +810,7 @@ async function renderTelegramLoginOptions() {
 
   btn.textContent = cfg.loginButtonText || 'Telegram orqali kirish';
   btn.classList.add('is-hidden');
+  btn.disabled = true;
   widgetHost.innerHTML = '';
   statusEl.textContent = 'Telegram login sozlanmoqda...';
   metaEl.textContent = 'Konfiguratsiya tekshirilmoqda...';
@@ -869,12 +839,14 @@ async function renderTelegramLoginOptions() {
       statusEl.textContent = 'Telegram widget yuklanmadi';
       metaEl.textContent = 'Internet, adblock yoki brauzer cheklovi sabab widget yuklanmadi. Sahifani yangilang yoki boshqa brauzerda sinab ko‘ring.';
       btn.classList.remove('is-hidden');
+      btn.disabled = false;
     };
     widgetHost.appendChild(script);
     return;
   }
 
   btn.classList.remove('is-hidden');
+  btn.disabled = false;
   if (hasDeepLink) {
     statusEl.textContent = 'Telegram login tayyorlanmoqda';
     metaEl.textContent = 'Bot username yoki login URL topildi. Shu tugma foydalanuvchini Telegram auth oqimiga olib boradi.';
@@ -959,10 +931,15 @@ async function bootstrapServerAuthSession() {
     const state = await AuthAPI.bootstrap();
     if (state?.authenticated && state.user) {
       AppState.user = state.user;
+      if (typeof Store?.syncRemoteMirror === 'function') {
+        try { await Store.syncRemoteMirror(); } catch (err) { console.warn('syncRemoteMirror bootstrap failed:', err); }
+      }
+      AppState.user = typeof Store?.loadUser === 'function' ? (Store.loadUser() || state.user) : state.user;
       hydrateUserUI();
       Router.go('home', true);
       try {
         initHome();
+        startBackgroundServices();
       } catch (err) {
         console.error('initHome after bootstrap failed:', err);
         Toast.show('Bosh sahifani yuklashda xato bo‘ldi. Sahifani yangilang.');
@@ -1095,10 +1072,14 @@ async function finishAuth() {
         avatar: AppState.authDraft?.telegramPhotoUrl || '',
       };
       const result = await AuthAPI.saveProfile(payload);
-      AppState.user = result.user;
+      if (typeof Store?.syncRemoteMirror === 'function') {
+        try { await Store.syncRemoteMirror(); } catch (err) { console.warn('syncRemoteMirror saveProfile failed:', err); }
+      }
+      AppState.user = typeof Store?.loadUser === 'function' ? (Store.loadUser() || result.user) : result.user;
       clearAuthDraft();
       hydrateUserUI();
       initHome();
+      startBackgroundServices();
       Router.go('home', true);
       Toast.show(role === 'beruvchi' ? 'Ish beruvchi profili yaratildi.' : 'Ishchi profili yaratildi.');
       return;
@@ -1373,6 +1354,10 @@ async function checkDutyVacancyPulse() {
 }
 
 function initHome() {
+  if (typeof Store?.ensureSeeded === 'function') {
+    try { Store.ensureSeeded(); } catch (err) { console.warn('ensureSeeded in initHome failed:', err); }
+  }
+  startBackgroundServices();
   renderCategories();
   renderHomeQuickFilters();
   renderJobs(getFilteredJobs());
@@ -2397,6 +2382,9 @@ async function saveProfileEditor() {
         role: AppState.user.role,
         avatar: AppState.user.avatar || ''
       });
+      if (typeof Store?.syncRemoteMirror === 'function') {
+        try { await Store.syncRemoteMirror(); } catch (err) { console.warn('syncRemoteMirror profile editor failed:', err); }
+      }
     } catch (err) {
       Toast.show(err.message || 'Profilni serverda saqlab bo‘lmadi.');
       return;
@@ -2546,16 +2534,13 @@ if ('serviceWorker' in navigator && !isFileProtocol() && isSecureAppContext()) {
 document.addEventListener('DOMContentLoaded', async () => {
   applyTheme(getAppSettings().theme);
   renderUserPresenceBadges();
-  setInterval(() => { updatePresence(); renderUserPresenceBadges(); }, 30000);
-  startRealtimeRefresh();
   syncHelpCenterUI();
   updateRuntimeNotes();
   initPost();
   clearUserUI();
 
-  // Real pilotda guest foydalanuvchi auth ekranda turganda remote write qilinmasin.
   if (!isServerPilotMode()) {
-    Store.ensureSeeded();
+    try { Store.ensureSeeded(); } catch (err) { console.warn('ensureSeeded bootstrap failed:', err); }
   }
 
   const bootstrapped = await bootstrapServerAuthSession();

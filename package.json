@@ -1,0 +1,9 @@
+{
+  "name": "tezkorish-real-pilot",
+  "private": true,
+  "version": "25.0.0",
+  "scripts": {
+    "start": "node server/server.js",
+    "build": "echo \"No build step\""
+  }
+}

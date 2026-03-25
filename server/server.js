@@ -39,7 +39,7 @@ function defaultDb() {
     updatedAt: nowIso(),
     storage: {
       global: {
-        'tezkorish.meta': { appVersion: 'real-pilot-v24', firstInstalledAt: Date.now(), seedInitialized: true },
+        'tezkorish.meta': { appVersion: 'real-pilot-v25', firstInstalledAt: Date.now(), seedInitialized: true },
         'tezkorish.jobs': [],
         'tezkorish.applications': [],
         'tezkorish.savedJobs': [],
@@ -433,6 +433,21 @@ async function handleApi(req, res, url) {
     const db = readDb();
     const { session } = getSession(req, db);
     return sendJson(res, 200, { ok: true, value: readStorageValue(db, key, session) });
+  }
+
+  if (pathname === '/api/storage/snapshot' && req.method === 'GET') {
+    const db = readDb();
+    const { session } = getSession(req, db);
+    const authUser = session?.userId ? getUserById(db, session.userId) : null;
+    const userScoped = session?.userId ? (db.storage.users[session.userId] || {}) : {};
+    return sendJson(res, 200, {
+      ok: true,
+      appVersion: db.storage.global['tezkorish.meta']?.appVersion || 'real-pilot-v25',
+      authenticated: Boolean(authUser),
+      authUser,
+      global: db.storage.global,
+      userScoped,
+    });
   }
 
   if (pathname === '/api/storage/write' && req.method === 'POST') {

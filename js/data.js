@@ -10,7 +10,7 @@ const SETTINGS = {
   activeJobLimit: 3,
   defaultExpiryHours: 24,
   closedRetentionHours: 72,
-  appVersion: 'real-pilot-v24',
+  appVersion: 'real-pilot-v25',
   demoAdminPhoneDigits: [],
 };
 
@@ -42,20 +42,76 @@ function getApiBaseUrl() {
   return String(cfg.apiBaseUrl || '').trim().replace(/\/$/, '');
 }
 
+
 function remoteRequestSync(method, url, body) {
   const xhr = new XMLHttpRequest();
   xhr.open(method, url, false);
   xhr.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
   xhr.withCredentials = true;
-  try {
-    xhr.send(body ? JSON.stringify(body) : null);
-  } catch (err) {
-    throw err;
-  }
+  xhr.send(body ? JSON.stringify(body) : null);
   if (xhr.status < 200 || xhr.status >= 300) {
     throw new Error(`Remote storage request failed (${xhr.status})`);
   }
   return xhr.responseText ? JSON.parse(xhr.responseText) : null;
+}
+
+async function remoteRequest(method, url, body) {
+  const res = await fetch(url, {
+    method,
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json;charset=UTF-8' },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  let payload = null;
+  try { payload = await res.json(); } catch { payload = null; }
+  if (!res.ok || payload?.ok === false) {
+    throw new Error(payload?.error || `Remote storage request failed (${res.status})`);
+  }
+  return payload;
+}
+
+let remoteWriteTimer = null;
+const remoteWriteQueue = new Map();
+
+function queueRemoteWrite(key, value) {
+  if (!shouldUseRemoteStorage()) return;
+  const user = getSessionUser();
+  if (!user && key !== STORAGE_KEYS.meta && key !== STORAGE_KEYS.settings) return;
+  remoteWriteQueue.set(key, value);
+  if (remoteWriteTimer) return;
+  remoteWriteTimer = setTimeout(async () => {
+    const apiBase = getApiBaseUrl();
+    const items = Array.from(remoteWriteQueue.entries());
+    remoteWriteQueue.clear();
+    remoteWriteTimer = null;
+    for (const [writeKey, writeValue] of items) {
+      try {
+        await remoteRequest('POST', `${apiBase}/storage/write`, { key: writeKey, value: writeValue });
+      } catch (err) {
+        console.warn('Remote write sync failed:', writeKey, err?.message || err);
+      }
+    }
+  }, 120);
+}
+
+async function syncRemoteMirror() {
+  if (!shouldUseRemoteStorage()) return { ok: false, reason: 'remote-off' };
+  const apiBase = getApiBaseUrl();
+  const snapshot = await remoteRequest('GET', `${apiBase}/storage/snapshot`);
+  const global = snapshot?.global || {};
+  Object.entries(global).forEach(([key, value]) => {
+    localStorage.setItem(key, JSON.stringify(value));
+  });
+  const userScoped = snapshot?.userScoped || {};
+  Object.entries(userScoped).forEach(([key, value]) => {
+    localStorage.setItem(key, JSON.stringify(value));
+  });
+  if (snapshot?.authUser) {
+    localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(normalizeUser(snapshot.authUser)));
+  } else {
+    localStorage.removeItem(STORAGE_KEYS.user);
+  }
+  return snapshot;
 }
 
 function shouldUseRemoteStorage() {
@@ -146,14 +202,6 @@ const AppState = {
 const Store = (() => {
   function safeRead(key, fallback) {
     try {
-      if (shouldUseRemoteStorage()) {
-        const apiBase = getApiBaseUrl();
-        const res = remoteRequestSync('GET', `${apiBase}/storage/read?key=${encodeURIComponent(key)}`);
-        const parsed = res?.value;
-        if (parsed === null || parsed === undefined) return fallback;
-        if (Array.isArray(fallback)) return Array.isArray(parsed) ? parsed : fallback;
-        return parsed ?? fallback;
-      }
       const raw = localStorage.getItem(key);
       if (!raw) return fallback;
       const parsed = JSON.parse(raw);
@@ -293,12 +341,11 @@ const Store = (() => {
   }
 
   function save(key, value) {
-    if (shouldUseRemoteStorage()) {
-      const apiBase = getApiBaseUrl();
-      const res = remoteRequestSync('POST', `${apiBase}/storage/write`, { key, value });
-      return res?.value ?? value;
-    }
     localStorage.setItem(key, JSON.stringify(value));
+    if (shouldUseRemoteStorage()) {
+      const user = getSessionUser();
+      if (user) queueRemoteWrite(key, value);
+    }
     return value;
   }
 
@@ -361,15 +408,6 @@ const Store = (() => {
   }
 
   function clearUser() {
-    if (shouldUseRemoteStorage()) {
-      try {
-        const apiBase = getApiBaseUrl();
-        remoteRequestSync('POST', `${apiBase}/storage/delete`, { key: STORAGE_KEYS.user });
-        remoteRequestSync('POST', `${apiBase}/auth/logout`, {});
-      } catch (err) {
-        console.warn('Remote logout fallback:', err);
-      }
-    }
     localStorage.removeItem(STORAGE_KEYS.user);
     localStorage.removeItem('tezkorish_user');
     localStorage.removeItem('user');
@@ -1134,6 +1172,7 @@ const Store = (() => {
     getAllUsers: loadUsersRaw,
     duplicateJob,
     touchUserPresence,
+    syncRemoteMirror,
     getPresenceSummary,
     getContractByJobAndUser,
     getChatThreadForContract,
