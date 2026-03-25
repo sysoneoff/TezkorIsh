@@ -11,7 +11,11 @@ const DB_FILE = path.join(DB_DIR, 'db.json');
 const APP_BASE_URL = String(process.env.APP_BASE_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 const TELEGRAM_BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME || '';
-const SESSION_SECRET = process.env.SESSION_SECRET || 'tezkorish-real-pilot-secret';
+const SESSION_SECRET = process.env.SESSION_SECRET || '';
+if (!SESSION_SECRET) {
+  console.error('SESSION_SECRET .env da topilmadi!');
+  process.exit(1);
+}
 const ADMIN_TELEGRAM_IDS = new Set(String(process.env.ADMIN_TELEGRAM_IDS || '').split(',').map(v => v.trim()).filter(Boolean));
 
 if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
@@ -39,7 +43,7 @@ function defaultDb() {
     updatedAt: nowIso(),
     storage: {
       global: {
-        'tezkorish.meta': { appVersion: 'real-pilot-v25', firstInstalledAt: Date.now(), seedInitialized: true },
+        'tezkorish.meta': { appVersion: 'real-pilot-v27', firstInstalledAt: Date.now(), seedInitialized: true },
         'tezkorish.jobs': [],
         'tezkorish.applications': [],
         'tezkorish.savedJobs': [],
@@ -74,12 +78,28 @@ function readDb() {
   db.storage.global = { ...init.storage.global, ...(db.storage.global || {}) };
   db.storage.users = db.storage.users || {};
   db.sessions = db.sessions || {};
+  pruneSessions(db);
   return db;
 }
 
+function pruneSessions(db) {
+  const cutoff = Date.now() - (14 * 24 * 60 * 60 * 1000);
+  Object.keys(db.sessions || {}).forEach((sid) => {
+    const session = db.sessions[sid];
+    const updatedAt = session?.updatedAt ? new Date(session.updatedAt).getTime() : 0;
+    if (!updatedAt || updatedAt < cutoff) delete db.sessions[sid];
+  });
+}
+
+let writeChain = Promise.resolve();
 function writeDb(db) {
+  pruneSessions(db);
   db.updatedAt = nowIso();
   fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+}
+function writeDbSafe(db) {
+  writeChain = writeChain.then(() => { writeDb(db); });
+  return writeChain;
 }
 
 function parseCookies(header = '') {
@@ -328,14 +348,14 @@ async function handleApi(req, res, url) {
     if (!verification.ok) {
       db.sessions[sid].pendingTelegram = { error: verification.reason || 'Telegram auth tasdiqlanmadi.' };
       db.sessions[sid].updatedAt = nowIso();
-      writeDb(db);
+      await writeDbSafe(db);
       return sendRedirect(res, `${redirectTo}${redirectTo.includes('?') ? '&' : '?'}tg_error=1`);
     }
     const payload = buildTelegramPayload(params);
     if (!payload.telegramUserId) {
       db.sessions[sid].pendingTelegram = { error: 'Telegram ID topilmadi.' };
       db.sessions[sid].updatedAt = nowIso();
-      writeDb(db);
+      await writeDbSafe(db);
       return sendRedirect(res, `${redirectTo}${redirectTo.includes('?') ? '&' : '?'}tg_error=1`);
     }
     const existing = getUserByTelegramId(db, payload.telegramUserId);
@@ -348,11 +368,11 @@ async function handleApi(req, res, url) {
         isAdmin: existing.isAdmin || ADMIN_TELEGRAM_IDS.has(String(payload.telegramUserId))
       });
       db.sessions[sid] = { createdAt: session?.createdAt || nowIso(), updatedAt: nowIso(), userId: nextUser.id, pendingTelegram: null };
-      writeDb(db);
+      await writeDbSafe(db);
       return sendRedirect(res, `${redirectTo}${redirectTo.includes('?') ? '&' : '?'}tg_ok=1`);
     }
     db.sessions[sid] = { createdAt: session?.createdAt || nowIso(), updatedAt: nowIso(), userId: null, pendingTelegram: payload };
-    writeDb(db);
+    await writeDbSafe(db);
     return sendRedirect(res, `${redirectTo}${redirectTo.includes('?') ? '&' : '?'}tg_new=1#auth-name`);
   }
 
@@ -415,7 +435,7 @@ async function handleApi(req, res, url) {
     user = upsertUser(db, user);
     db.sessions[sid] = { createdAt: session?.createdAt || nowIso(), updatedAt: nowIso(), userId: user.id, pendingTelegram: null };
     ensureUserScoped(db, user.id);
-    writeDb(db);
+    await writeDbSafe(db);
     return sendJson(res, 200, { ok: true, user });
   }
 
@@ -423,7 +443,7 @@ async function handleApi(req, res, url) {
     const db = readDb();
     const { sid } = getSession(req, db);
     if (sid) delete db.sessions[sid];
-    writeDb(db);
+    await writeDbSafe(db);
     return sendJson(res, 200, { ok: true }, { 'Set-Cookie': clearSessionCookieHeader() });
   }
 
@@ -432,22 +452,51 @@ async function handleApi(req, res, url) {
     if (!key) return sendJson(res, 400, { ok: false, error: 'key kerak.' });
     const db = readDb();
     const { session } = getSession(req, db);
+    if (!session?.userId) return sendJson(res, 401, { ok: false, error: 'Avval tizimga kiring.' });
     return sendJson(res, 200, { ok: true, value: readStorageValue(db, key, session) });
   }
 
   if (pathname === '/api/storage/snapshot' && req.method === 'GET') {
     const db = readDb();
     const { session } = getSession(req, db);
-    const authUser = session?.userId ? getUserById(db, session.userId) : null;
+    if (!session?.userId) return sendJson(res, 401, { ok: false, error: 'Avval tizimga kiring.' });
+    const authUser = getUserById(db, session.userId) || null;
     const userScoped = session?.userId ? (db.storage.users[session.userId] || {}) : {};
     return sendJson(res, 200, {
       ok: true,
-      appVersion: db.storage.global['tezkorish.meta']?.appVersion || 'real-pilot-v25',
+      appVersion: db.storage.global['tezkorish.meta']?.appVersion || 'real-pilot-v27',
       authenticated: Boolean(authUser),
       authUser,
       global: db.storage.global,
       userScoped,
     });
+  }
+
+  if (pathname === '/api/storage/write-batch' && req.method === 'POST') {
+    const body = await readRequestBody(req);
+    const items = Array.isArray(body?.items) ? body.items : [];
+    if (!items.length) return sendJson(res, 400, { ok: false, error: 'items kerak.' });
+    const db = readDb();
+    const { session } = getSession(req, db);
+    if (!session?.userId) return sendJson(res, 401, { ok: false, error: 'Avval tizimga kiring.' });
+    try {
+      for (const item of items) {
+        const key = String(item?.key || '');
+        if (!key) continue;
+        writeStorageValue(db, key, item?.value, session);
+      }
+      if (session?.userId) {
+        const user = getUserById(db, session.userId);
+        if (user) {
+          user.lastActiveAt = Date.now();
+          upsertUser(db, user);
+        }
+      }
+      await writeDbSafe(db);
+      return sendJson(res, 200, { ok: true, count: items.length });
+    } catch (err) {
+      return sendJson(res, 500, { ok: false, error: err.message || 'Storage batch xatosi.' });
+    }
   }
 
   if (pathname === '/api/storage/write' && req.method === 'POST') {
@@ -466,7 +515,7 @@ async function handleApi(req, res, url) {
           upsertUser(db, user);
         }
       }
-      writeDb(db);
+      await writeDbSafe(db);
       return sendJson(res, 200, { ok: true, value });
     } catch (err) {
       return sendJson(res, 400, { ok: false, error: err.message || 'Saqlashda xato.' });
@@ -492,7 +541,7 @@ async function handleApi(req, res, url) {
     } else {
       delete db.storage.global[key];
     }
-    writeDb(db);
+    await writeDbSafe(db);
     return sendJson(res, 200, { ok: true });
   }
 

@@ -277,13 +277,6 @@ function escapeAttr(value) {
   return String(value ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-function updatePresence() {
-  if (AppState.user && typeof Store?.touchUserPresence === 'function') {
-    AppState.user = Store.touchUserPresence(AppState.user.id) || AppState.user;
-    renderUserPresenceBadges();
-  }
-}
-
 function renderUserPresenceBadges() {
   const totalEl = document.getElementById('user-count-total');
   const onlineEl = document.getElementById('user-count-online');
@@ -511,7 +504,7 @@ function renderContracts() {
       <div class="activity-meta">${escapeHtml(contract.location)} · ${contract.schedule ? escapeHtml(contract.schedule) : 'Jadval kiritilmagan'}</div>
       <div class="activity-actions">
         ${contract.mapLink ? `<button class="mini-btn" onclick="window.open('${escapeJsString(contract.mapLink)}','_blank','noopener')">🗺 Xarita</button>` : ''}
-        <button class="mini-btn" onclick="copyPhone('${contract.employerPhone || contract.workerPhone || ''}')">📋 Telefon</button>
+        <button class="mini-btn" onclick="copyPhone('${escapeJsString(contract.employerPhone || contract.workerPhone || '')}')">📋 Telefon</button>
       </div>
     </div>`).join('')}</div>` : `<div class="empty-state"><div class="empty-icon">🗂</div><div class="empty-title">Shartnomalar hali yo‘q</div><div class="empty-desc">Ishchi qabul qilinganda shartnoma arxivi shu yerda saqlanadi.</div></div>`;
 }
@@ -826,6 +819,8 @@ async function renderTelegramLoginOptions() {
   const hasDeepLink = Boolean(cfg.deepLinkUrl || loginUrl || botUsername);
 
   if (hasWidget) {
+    btn.classList.add('is-hidden');
+    btn.disabled = true;
     statusEl.textContent = `Telegram login tayyor: @${botUsername}`;
     metaEl.textContent = 'Rasmiy Telegram website login widgeti ishlaydi. Telegram ma’lumoti backendda verify qilinadi va session cookie yaratiladi.';
     const script = document.createElement('script');
@@ -845,14 +840,17 @@ async function renderTelegramLoginOptions() {
     return;
   }
 
-  btn.classList.remove('is-hidden');
-  btn.disabled = false;
-  if (hasDeepLink) {
+  if (!isServerPilotMode()) {
+    btn.classList.remove('is-hidden');
+    btn.disabled = false;
+  }
+  if (hasDeepLink && !isServerPilotMode()) {
     statusEl.textContent = 'Telegram login tayyorlanmoqda';
     metaEl.textContent = 'Bot username yoki login URL topildi. Shu tugma foydalanuvchini Telegram auth oqimiga olib boradi.';
     return;
   }
 
+  btn.classList.add('is-hidden');
   statusEl.textContent = 'Telegram login hali sozlanmagan';
   metaEl.textContent = 'Server .env faylida TELEGRAM_BOT_TOKEN va TELEGRAM_BOT_USERNAME kiriting, so‘ng auth callback URL ni ishlating.';
 }
@@ -1504,8 +1502,8 @@ function renderJobs(jobs) {
             ${distance ? `<div class="job-card-phone">📍 ${distance} km</div>` : ''}
           </div>
           <div class="job-card-btns">
-            <button class="btn-call-sm" onclick="event.stopPropagation(); callNumber('${j.phone}', '${escapeJsString(j.poster)}')">📞</button>
-            <button class="btn-call-sm" onclick="event.stopPropagation(); openWhatsApp('${j.phone}', '${escapeJsString(j.poster)}')">💬</button>
+            <button class="btn-call-sm" onclick="event.stopPropagation(); callNumber('${escapeJsString(j.phone || '')}', '${escapeJsString(j.poster)}')">📞</button>
+            <button class="btn-call-sm" onclick="event.stopPropagation(); openWhatsApp('${escapeJsString(j.phone || '')}', '${escapeJsString(j.poster)}')">💬</button>
             ${j.mapLink ? `<button class="btn-call-sm" onclick="event.stopPropagation(); window.open('${escapeJsString(j.mapLink)}','_blank','noopener')">🗺</button>` : ''}
           </div>
         </div>
@@ -1659,8 +1657,8 @@ function openDetail(jobId) {
       <div class="info-cell"><div class="info-cell-label">🕒 Ish vaqti</div><div class="info-cell-value">${escapeHtml(j.schedule || 'Kelishiladi')}</div></div>
     </div>
     <div class="detail-contact-row">
-      <button class="mini-btn" onclick="copyPhone('${j.phone || ''}')">📋 Telefonni nusxalash</button>
-      <button class="mini-btn" onclick="openWhatsApp('${j.phone || ''}', '${escapeJsString(j.poster)}')">💬 WhatsApp</button>
+      <button class="mini-btn" onclick="copyPhone('${escapeJsString(j.phone || '')}')">📋 Telefonni nusxalash</button>
+      <button class="mini-btn" onclick="openWhatsApp('${escapeJsString(j.phone || '')}', '${escapeJsString(j.poster)}')">💬 WhatsApp</button>
       ${j.telegram ? `<button class="mini-btn" onclick="openTelegramContact('${escapeJsString(j.telegram)}')">🛩 Telegram</button>` : ''}
       ${j.mapLink ? `<button class="mini-btn" onclick="openMapForCurrentJob()">🗺 Xarita</button>` : ''}
     </div>
@@ -1742,12 +1740,12 @@ function renderViewerDetailActions(job, myApplication) {
     }
     return `
       ${primaryAction}
-      <button class="btn-call-lg" onclick="callNumber('${job.phone}', '${escapeJsString(job.poster)}')">📞 Qo'ng'iroq qilish</button>`;
+      <button class="btn-call-lg" onclick="callNumber('${escapeJsString(job.phone || '')}', '${escapeJsString(job.poster)}')">📞 Qo'ng'iroq qilish</button>`;
   }
   if (isAdminViewer) {
     return `
       <button class="btn-outline" onclick="Toast.show('Moderator ko'rish rejimi.')">🛡 Moderator</button>
-      <button class="btn-call-lg" onclick="callNumber('${job.phone}', '${escapeJsString(job.poster)}')">📞 Aloqa</button>`;
+      <button class="btn-call-lg" onclick="callNumber('${escapeJsString(job.phone || '')}', '${escapeJsString(job.poster)}')">📞 Aloqa</button>`;
   }
   return `
     <button class="btn-outline" onclick="Toast.show('Ish beruvchi boshqa ish beruvchining e'loniga kira olmaydi.')">🔒 Yopiq</button>
@@ -2069,8 +2067,8 @@ function renderActivity() {
             </div>
             <div class="activity-meta">${formatRelative(app.createdAt)} oldin · ${escapeHtml(app.jobLocation)}</div>
             <div class="activity-actions">
-              <button class="mini-btn" onclick="callNumber('${app.workerPhone}', '${escapeJsString(app.workerName)}')">📞 Qo'ng'iroq</button>
-              <button class="mini-btn" onclick="openWhatsApp('${app.workerPhone}', '${escapeJsString(app.workerName)}')">💬 WhatsApp</button>
+              <button class="mini-btn" onclick="callNumber('${escapeJsString(app.workerPhone || '')}', '${escapeJsString(app.workerName)}')">📞 Qo'ng'iroq</button>
+              <button class="mini-btn" onclick="openWhatsApp('${escapeJsString(app.workerPhone || '')}', '${escapeJsString(app.workerName)}')">💬 WhatsApp</button>
               <button class="mini-btn accept" onclick="setApplicationStatus('${app.id}', 'accepted')">✅ Qabul qilish</button>
               <button class="mini-btn reject" onclick="setApplicationStatus('${app.id}', 'rejected')">✖ Rad etish</button>
             </div>
@@ -2089,8 +2087,8 @@ function renderActivity() {
             <div class="activity-meta">Holat: ${statusLabel(app.status)} · ${escapeHtml(app.jobLocation)}</div>
             <div class="activity-actions">
               <button class="mini-btn" onclick="openDetail(${app.jobId})">🔎 E'lon</button>
-              <button class="mini-btn" onclick="callNumber('${app.workerPhone}', '${escapeJsString(app.workerName)}')">📞 Aloqa</button>
-              <button class="mini-btn" onclick="openWhatsApp('${app.workerPhone}', '${escapeJsString(app.workerName)}')">💬 WhatsApp</button>
+              <button class="mini-btn" onclick="callNumber('${escapeJsString(app.workerPhone || '')}', '${escapeJsString(app.workerName)}')">📞 Aloqa</button>
+              <button class="mini-btn" onclick="openWhatsApp('${escapeJsString(app.workerPhone || '')}', '${escapeJsString(app.workerName)}')">💬 WhatsApp</button>
               <button class="mini-btn accept" onclick="completeJobFromActivity(${app.jobId})">🏁 Bajarildi</button>
             </div>
           </div>`).join('') : `<div class="empty-state compact"><div class="empty-title">Jarayon yo'q</div><div class="empty-desc">Nomzod qabul qilingandan keyin shu yerda ko'rinadi</div></div>`}
@@ -2141,7 +2139,7 @@ function renderActivity() {
             <div class="activity-meta">${formatRelative(app.createdAt)} oldin · ${escapeHtml(app.jobLocation)}</div>
             <div class="activity-actions">
               <button class="mini-btn" onclick="openDetail(${app.jobId})">🔎 E'lonni ochish</button>
-              <button class="mini-btn" onclick="callNumber('${app.employerPhone}', '${escapeJsString(app.employerName)}')">📞 Qo'ng'iroq</button>
+              <button class="mini-btn" onclick="callNumber('${escapeJsString(app.employerPhone || '')}', '${escapeJsString(app.employerName)}')">📞 Qo'ng'iroq</button>
               ${app.status === 'pending' ? `<button class="mini-btn reject" onclick="cancelMyApplication('${app.id}')">↩ Bekor qilish</button>` : ''}
               ${app.status === 'accepted' ? `<button class="mini-btn accept" onclick="startAcceptedWork('${app.id}')">▶ Start</button>` : ''}
               ${app.status === 'completed' ? `<button class="mini-btn accept" onclick="rateEmployerForApplication('${app.id}')">⭐ Baholash</button>` : ''}

@@ -2465,3 +2465,5 @@ html[data-theme='white'] {
 [data-theme='white'] .activity-card-title {
   color: #172033;
 }
+
+#toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }

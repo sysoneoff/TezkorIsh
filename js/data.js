@@ -10,7 +10,7 @@ const SETTINGS = {
   activeJobLimit: 3,
   defaultExpiryHours: 24,
   closedRetentionHours: 72,
-  appVersion: 'real-pilot-v26',
+  appVersion: 'real-pilot-v27',
   demoAdminPhoneDigits: [],
 };
 
@@ -85,24 +85,14 @@ function getSessionUserSnapshot() {
   }
 }
 
-function remoteRequestSync(method, url, body) {
-  const xhr = new XMLHttpRequest();
-  xhr.open(method, url, false);
-  xhr.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
-  xhr.withCredentials = true;
-  xhr.send(body ? JSON.stringify(body) : null);
-  if (xhr.status < 200 || xhr.status >= 300) {
-    throw new Error(`Remote storage request failed (${xhr.status})`);
-  }
-  return xhr.responseText ? JSON.parse(xhr.responseText) : null;
-}
 
-async function remoteRequest(method, url, body) {
+async function remoteRequest(method, url, body, options = {}) {
   const res = await fetch(url, {
     method,
     credentials: 'include',
     headers: { 'Content-Type': 'application/json;charset=UTF-8' },
     body: body ? JSON.stringify(body) : undefined,
+    keepalive: Boolean(options.keepalive),
   });
   let payload = null;
   try { payload = await res.json(); } catch { payload = null; }
@@ -113,27 +103,70 @@ async function remoteRequest(method, url, body) {
 }
 
 let remoteWriteTimer = null;
+let remoteFlushPromise = null;
 const remoteWriteQueue = new Map();
+const REMOTE_IMMEDIATE_KEYS = new Set([
+  STORAGE_KEYS.jobs,
+  STORAGE_KEYS.applications,
+  STORAGE_KEYS.users,
+  STORAGE_KEYS.contracts,
+  STORAGE_KEYS.reviews,
+  STORAGE_KEYS.chats,
+  STORAGE_KEYS.reports,
+  STORAGE_KEYS.meta,
+]);
 
-function queueRemoteWrite(key, value) {
+function isImmediateRemoteKey(key) {
+  return REMOTE_IMMEDIATE_KEYS.has(String(key || ''));
+}
+
+async function flushRemoteWriteQueue(options = {}) {
+  if (!shouldUseRemoteStorage()) return;
+  if (remoteFlushPromise) return remoteFlushPromise;
+  if (!remoteWriteQueue.size) return;
+  const apiBase = getApiBaseUrl();
+  const items = Array.from(remoteWriteQueue.entries()).map(([key, value]) => ({ key, value }));
+  remoteWriteQueue.clear();
+  if (remoteWriteTimer) { clearTimeout(remoteWriteTimer); remoteWriteTimer = null; }
+
+  const sendWithBeacon = Boolean(options.useBeacon && navigator.sendBeacon);
+  if (sendWithBeacon) {
+    try {
+      const payload = JSON.stringify({ items });
+      const blob = new Blob([payload], { type: 'application/json' });
+      const ok = navigator.sendBeacon(`${apiBase}/storage/write-batch`, blob);
+      if (ok) return;
+    } catch {}
+  }
+
+  remoteFlushPromise = (async () => {
+    try {
+      await remoteRequest('POST', `${apiBase}/storage/write-batch`, { items }, { keepalive: !!options.keepalive });
+    } catch (err) {
+      console.warn('Remote write batch failed:', err?.message || err);
+      for (const item of items) remoteWriteQueue.set(item.key, item.value);
+      throw err;
+    } finally {
+      remoteFlushPromise = null;
+    }
+  })();
+  return remoteFlushPromise;
+}
+
+function queueRemoteWrite(key, value, options = {}) {
   if (!shouldUseRemoteStorage()) return;
   const user = getSessionUserSnapshot();
   if (!user && key !== STORAGE_KEYS.meta && key !== STORAGE_KEYS.settings) return;
   remoteWriteQueue.set(key, value);
+  const immediate = options.immediate || isImmediateRemoteKey(key);
+  if (immediate) {
+    flushRemoteWriteQueue({ keepalive: true }).catch(() => {});
+    return;
+  }
   if (remoteWriteTimer) return;
-  remoteWriteTimer = setTimeout(async () => {
-    const apiBase = getApiBaseUrl();
-    const items = Array.from(remoteWriteQueue.entries());
-    remoteWriteQueue.clear();
-    remoteWriteTimer = null;
-    for (const [writeKey, writeValue] of items) {
-      try {
-        await remoteRequest('POST', `${apiBase}/storage/write`, { key: writeKey, value: writeValue });
-      } catch (err) {
-        console.warn('Remote write sync failed:', writeKey, err?.message || err);
-      }
-    }
-  }, 120);
+  remoteWriteTimer = setTimeout(() => {
+    flushRemoteWriteQueue({ keepalive: true }).catch(() => {});
+  }, 150);
 }
 
 async function syncRemoteMirror() {
@@ -166,6 +199,11 @@ function shouldUseRemoteStorage() {
     return false;
   }
 }
+
+window.addEventListener('pagehide', () => {
+  flushRemoteWriteQueue({ useBeacon: true, keepalive: true }).catch(() => {});
+});
+
 
 const CATEGORIES = [
   { id: 'hammasi', icon: '🔥', name: 'Hammasi' },
@@ -386,7 +424,7 @@ const Store = (() => {
     localStorage.setItem(key, JSON.stringify(value));
     if (shouldUseRemoteStorage()) {
       const user = getSessionUser();
-      if (user) queueRemoteWrite(key, value);
+      if (user) queueRemoteWrite(key, value, { immediate: isImmediateRemoteKey(key) });
     }
     return value;
   }
