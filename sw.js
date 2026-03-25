@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tezkorish-real-pilot-v21';
+const CACHE_NAME = 'tezkorish-real-pilot-v22';
 const ASSETS = [
   './',
   './index.html',

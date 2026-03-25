@@ -1,4 +1,4 @@
-# TezkorIsh — Real Pilot v21
+# TezkorIsh — Real Pilot v22
 
 Bu build endi faqat frontend demo emas. Paket ichida:
 - haqiqiy **Node.js server** (`server/server.js`)

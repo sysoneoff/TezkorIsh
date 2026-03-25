@@ -1,6 +1,6 @@
 // ═══════════════════════════════
 // TezkorIsh — App Logic v6.0
-// real pilot web build v21
+// real pilot web build v22
 // ═══════════════════════════════
 'use strict';
 
@@ -858,9 +858,10 @@ async function renderTelegramLoginOptions() {
     script.setAttribute('data-auth-url', widgetCallbackUrl);
     script.setAttribute('data-request-access', 'write');
     widgetHost.appendChild(script);
-    btn.classList.remove('btn-outline');
+    btn.classList.add('is-hidden');
     return;
   }
+  btn.classList.remove('is-hidden');
 
   if (hasDeepLink) {
     statusEl.textContent = 'Telegram login uchun konfiguratsiya tayyorlanmoqda';

@@ -10,7 +10,7 @@ const SETTINGS = {
   activeJobLimit: 3,
   defaultExpiryHours: 24,
   closedRetentionHours: 72,
-  appVersion: 'real-pilot-v21',
+  appVersion: 'real-pilot-v22',
   demoAdminPhoneDigits: [],
 };
 
@@ -29,20 +29,17 @@ const STORAGE_KEYS = {
   chats: 'tezkorish.chats',
 };
 
-const REMOTE_STORAGE_MODE = (() => {
+function getPilotConfigSafe() {
   try {
-    const cfg = window.TEZKOR_PILOT_CONFIG || {};
-    const apiBase = String(cfg.apiBaseUrl || '').trim();
-    const serverMode = String(cfg.pilotMode || '').toLowerCase() === 'server';
-    return Boolean(apiBase && !window.location.protocol.startsWith('file') && serverMode);
+    return window.TEZKOR_PILOT_CONFIG || {};
   } catch {
-    return false;
+    return {};
   }
-})();
+}
 
 function getApiBaseUrl() {
-  const cfg = window.TEZKOR_PILOT_CONFIG || {};
-  return String(cfg.apiBaseUrl || '').replace(/\/$/, '');
+  const cfg = getPilotConfigSafe();
+  return String(cfg.apiBaseUrl || '').trim().replace(/\/$/, '');
 }
 
 function remoteRequestSync(method, url, body) {
@@ -62,7 +59,14 @@ function remoteRequestSync(method, url, body) {
 }
 
 function shouldUseRemoteStorage() {
-  return REMOTE_STORAGE_MODE;
+  try {
+    const cfg = getPilotConfigSafe();
+    const apiBase = getApiBaseUrl();
+    const serverMode = String(cfg.pilotMode || '').toLowerCase() === 'server';
+    return Boolean(apiBase && !window.location.protocol.startsWith('file') && serverMode);
+  } catch {
+    return false;
+  }
 }
 
 const CATEGORIES = [
