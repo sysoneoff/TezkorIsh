@@ -10,7 +10,7 @@ const SETTINGS = {
   activeJobLimit: 3,
   defaultExpiryHours: 24,
   closedRetentionHours: 72,
-  appVersion: 'real-pilot-v23',
+  appVersion: 'real-pilot-v24',
   demoAdminPhoneDigits: [],
 };
 
@@ -449,6 +449,8 @@ const Store = (() => {
 
   function cleanupExpiredJobs() {
     const now = Date.now();
+    const isRemote = shouldUseRemoteStorage();
+    const user = getSessionUser();
     let jobs = loadJobsRaw().map(job => {
       if (job.status === 'active' && job.expiresAt <= now) {
         return { ...job, status: 'expired', hiddenAt: now };
@@ -479,9 +481,12 @@ const Store = (() => {
     applications = applications.filter(app => keepJobIds.has(String(app.jobId)));
     const saved = loadSavedRaw().filter(item => keepJobIds.has(String(item.jobId)));
 
-    saveJobs(jobs);
-    saveApplications(applications);
-    saveSaved(saved);
+    // Guest foydalanuvchi login sahifasida turganda remote write qilinmasin.
+    if (!isRemote || user) {
+      saveJobs(jobs);
+      saveApplications(applications);
+      saveSaved(saved);
+    }
     return jobs;
   }
 

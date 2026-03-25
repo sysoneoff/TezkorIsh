@@ -1,6 +1,6 @@
 // ═══════════════════════════════
 // TezkorIsh — App Logic v6.0
-// real pilot web build v22
+// real pilot web build v24
 // ═══════════════════════════════
 'use strict';
 
@@ -835,18 +835,25 @@ async function renderTelegramLoginOptions() {
   const localCard = document.querySelector('.telegram-auth-card.muted');
   if (!statusEl || !metaEl || !widgetHost || !btn) return;
 
+  // Server buildda lokal fallback bloki hech qachon ko‘rinmasin.
+  const allowLocal = Boolean(PILOT_CONFIG?.allowLocalFallback) && !isServerPilotMode();
+  if (localCard) localCard.classList.toggle('is-hidden', !allowLocal);
+
+  btn.textContent = cfg.loginButtonText || 'Telegram orqali kirish';
+  btn.classList.add('is-hidden');
+  widgetHost.innerHTML = '';
+  statusEl.textContent = 'Telegram login sozlanmoqda...';
+  metaEl.textContent = 'Konfiguratsiya tekshirilmoqda...';
+
   let liveCfg = null;
-  if (isServerPilotMode()) liveCfg = await AuthAPI.telegramConfig();
+  if (isServerPilotMode()) {
+    liveCfg = await AuthAPI.telegramConfig();
+  }
   const botUsername = cfg.botUsername || liveCfg?.botUsername || '';
   const widgetCallbackUrl = cfg.widgetCallbackUrl || liveCfg?.callbackUrl || '';
   const loginUrl = cfg.loginUrl || '';
   const hasWidget = Boolean(botUsername && widgetCallbackUrl);
   const hasDeepLink = Boolean(cfg.deepLinkUrl || loginUrl || botUsername);
-  const allowLocal = Boolean(PILOT_CONFIG?.allowLocalFallback) && !isServerPilotMode();
-  if (localCard) localCard.classList.toggle('is-hidden', !allowLocal);
-
-  btn.textContent = cfg.loginButtonText || 'Telegram orqali kirish';
-  widgetHost.innerHTML = '';
 
   if (hasWidget) {
     statusEl.textContent = `Telegram login tayyor: @${botUsername}`;
@@ -864,14 +871,13 @@ async function renderTelegramLoginOptions() {
       btn.classList.remove('is-hidden');
     };
     widgetHost.appendChild(script);
-    btn.classList.add('is-hidden');
     return;
   }
-  btn.classList.remove('is-hidden');
 
+  btn.classList.remove('is-hidden');
   if (hasDeepLink) {
-    statusEl.textContent = 'Telegram login uchun konfiguratsiya tayyorlanmoqda';
-    metaEl.textContent = 'Bot username yoki login URL kiritilgan. Shu tugma foydalanuvchini Telegram auth oqimiga olib boradi.';
+    statusEl.textContent = 'Telegram login tayyorlanmoqda';
+    metaEl.textContent = 'Bot username yoki login URL topildi. Shu tugma foydalanuvchini Telegram auth oqimiga olib boradi.';
     return;
   }
 
@@ -2538,7 +2544,6 @@ if ('serviceWorker' in navigator && !isFileProtocol() && isSecureAppContext()) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-  Store.ensureSeeded();
   applyTheme(getAppSettings().theme);
   renderUserPresenceBadges();
   setInterval(() => { updatePresence(); renderUserPresenceBadges(); }, 30000);
@@ -2547,6 +2552,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   updateRuntimeNotes();
   initPost();
   clearUserUI();
+
+  // Real pilotda guest foydalanuvchi auth ekranda turganda remote write qilinmasin.
+  if (!isServerPilotMode()) {
+    Store.ensureSeeded();
+  }
+
   const bootstrapped = await bootstrapServerAuthSession();
   if (bootstrapped) return;
   const handledTelegram = handleTelegramCallbackFromUrl();

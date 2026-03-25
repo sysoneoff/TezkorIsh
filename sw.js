@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tezkorish-real-pilot-v23';
+const CACHE_NAME = 'tezkorish-real-pilot-v24';
 const STATIC_ASSETS = [
   './manifest.json',
   './icons/icon-72.png',
