@@ -11,10 +11,9 @@ const DB_FILE = path.join(DB_DIR, 'db.json');
 const APP_BASE_URL = String(process.env.APP_BASE_URL || `http://localhost:${PORT}`).replace(/\/$/, '');
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 const TELEGRAM_BOT_USERNAME = process.env.TELEGRAM_BOT_USERNAME || '';
-const SESSION_SECRET = process.env.SESSION_SECRET || '';
-if (!SESSION_SECRET) {
-  console.error('SESSION_SECRET .env da topilmadi!');
-  process.exit(1);
+const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex');
+if (!process.env.SESSION_SECRET) {
+  console.warn("SESSION_SECRET topilmadi. Vaqtinchalik random secret ishlatilyapti; production uchun baribir .env ga qo'ying.");
 }
 const ADMIN_TELEGRAM_IDS = new Set(String(process.env.ADMIN_TELEGRAM_IDS || '').split(',').map(v => v.trim()).filter(Boolean));
 
@@ -43,7 +42,7 @@ function defaultDb() {
     updatedAt: nowIso(),
     storage: {
       global: {
-        'tezkorish.meta': { appVersion: 'real-pilot-v34', firstInstalledAt: Date.now(), seedInitialized: true },
+        'tezkorish.meta': { appVersion: 'real-pilot-v35', firstInstalledAt: Date.now(), seedInitialized: true },
         'tezkorish.jobs': [],
         'tezkorish.applications': [],
         'tezkorish.savedJobs': [],
@@ -264,8 +263,19 @@ function setGlobalArray(db, key, value) {
   return db.storage.global[key];
 }
 
+function normalizeSortTimestamp(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const asNumber = Number(value);
+    if (Number.isFinite(asNumber)) return asNumber;
+    const parsed = Date.parse(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return 0;
+}
+
 function sortByCreatedDesc(list) {
-  return list.slice().sort((a, b) => Number(b?.createdAt || b?.updatedAt || 0) - Number(a?.createdAt || a?.updatedAt || 0));
+  return list.slice().sort((a, b) => normalizeSortTimestamp(b?.createdAt || b?.updatedAt || 0) - normalizeSortTimestamp(a?.createdAt || a?.updatedAt || 0));
 }
 
 function ensureAuthUser(db, session) {
@@ -385,7 +395,7 @@ function mergeGlobalStorageValue(db, key, value, authUser) {
     const incoming = value && typeof value === 'object' ? value : {};
     db.storage.global[key] = {
       ...current,
-      appVersion: 'real-pilot-v34',
+      appVersion: 'real-pilot-v35',
       firstInstalledAt: Number(incoming.firstInstalledAt || current.firstInstalledAt || Date.now()),
       lastOpenedAt: Number(incoming.lastOpenedAt || current.lastOpenedAt || Date.now()),
       seedInitialized: true,
@@ -802,7 +812,7 @@ async function handleApi(req, res, url) {
     const userScoped = session?.userId ? (db.storage.users[session.userId] || {}) : {};
     return sendJson(res, 200, {
       ok: true,
-      appVersion: db.storage.global['tezkorish.meta']?.appVersion || 'real-pilot-v34',
+      appVersion: db.storage.global['tezkorish.meta']?.appVersion || 'real-pilot-v35',
       authenticated: Boolean(authUser),
       authUser,
       global: db.storage.global,

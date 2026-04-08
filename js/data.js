@@ -10,7 +10,7 @@ const SETTINGS = {
   activeJobLimit: 3,
   defaultExpiryHours: 24,
   closedRetentionHours: 72,
-  appVersion: 'real-pilot-v34',
+  appVersion: 'real-pilot-v35',
   demoAdminPhoneDigits: [],
 };
 
@@ -40,6 +40,21 @@ function getPilotConfigSafe() {
 function getApiBaseUrl() {
   const cfg = getPilotConfigSafe();
   return String(cfg.apiBaseUrl || '').trim().replace(/\/$/, '');
+}
+
+function normalizeCreatedAtValue(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const asNumber = Number(value);
+    if (Number.isFinite(asNumber)) return asNumber;
+    const parsed = Date.parse(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return 0;
+}
+
+function sortByNewest(items) {
+  return items.slice().sort((a, b) => normalizeCreatedAtValue(b?.createdAt || b?.updatedAt || 0) - normalizeCreatedAtValue(a?.createdAt || a?.updatedAt || 0));
 }
 
 
@@ -274,7 +289,7 @@ function buildSeedJob(id, data, createdHoursAgo = 1, durationHours = 24) {
   };
 }
 
-const SEED_JOBS = [];
+const SEED_JOBS = []; // intentionally empty for production-style clean feed
 
 const AppState = {
   user: null,
@@ -654,7 +669,7 @@ const Store = (() => {
   }
 
   function getAllJobs() {
-    return cleanupExpiredJobs().slice().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    return sortByNewest(cleanupExpiredJobs());
   }
 
   function getPublicFeedJobs() {
@@ -831,7 +846,7 @@ const Store = (() => {
 
   function getAllApplications() {
     cleanupExpiredJobs();
-    return loadApplicationsRaw().slice().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    return sortByNewest(loadApplicationsRaw());
   }
 
   function getMyApplications(workerId) {
@@ -1033,7 +1048,7 @@ const Store = (() => {
   }
 
   function getReports() {
-    return loadReportsRaw().slice().sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    return sortByNewest(loadReportsRaw());
   }
 
   function resolveReport(reportId) {
@@ -1054,9 +1069,8 @@ const Store = (() => {
 
 
   function getContractsForUser(userId) {
-    return loadContractsRaw()
-      .filter(contract => String(contract.workerId) == String(userId) || String(contract.employerId) == String(userId))
-      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    return sortByNewest(loadContractsRaw()
+      .filter(contract => String(contract.workerId) === String(userId) || String(contract.employerId) === String(userId)));
   }
 
   function submitReview(payload) {
@@ -1132,7 +1146,7 @@ const Store = (() => {
     if (![String(contract.workerId), String(contract.employerId)].includes(String(userId))) throw new Error('Chatga ruxsat yo‘q.');
     const threadId = contract.threadId || ('t-' + contract.applicationId);
     let chats = loadChatsRaw();
-    let thread = chats.find(t => String(t.id) == String(threadId));
+    let thread = chats.find(t => String(t.id) === String(threadId));
     if (!thread) {
       thread = {
         id: threadId,

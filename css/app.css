@@ -2477,7 +2477,7 @@ html[data-theme='white'] {
   color: #172033;
 }
 
-#toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+#toast.visible { transform: translateX(-50%) translateY(0); opacity: 1; }
 
 
 /* v28 sysone cleanup */

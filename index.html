@@ -1370,7 +1370,7 @@
       box-shadow: var(--shadow-lg);
       animation: fadeUp 0.3s var(--ease) forwards;
     }
-    #pwa-banner.visible { display: flex; }
+    #pwa-banner.show { display: flex; }
     @keyframes fadeUp {
       from { transform: translateY(8px); opacity: 0; }
       to { transform: translateY(0); opacity: 1; }
@@ -1425,7 +1425,7 @@
       max-width: calc(100vw - 40px);
       text-align: center;
     }
-    #toast.show {
+    #toast.visible {
       opacity: 1;
       transform: translateX(-50%) translateY(0);
     }
@@ -1435,16 +1435,7 @@
        ═══════════════════════════════════════ */
     ::-webkit-scrollbar { width: 0; height: 0; }
   
-    /* SysOne force theme */
-    body, .screen, #mobile-view { background: linear-gradient(180deg,#07101d 0%,#0b1628 100%); }
-    .sidebar-logo-text span, .si-badge, .btn-primary, .sidebar-post-btn { color: var(--accent-fg); }
-    .page-hero, .home-hero, .profile-hero, .screen-header, .section-card, .activity-card, .job-card, .card, .modal-sheet { background: rgba(10,23,40,0.92) !important; color: var(--text) !important; border-color: var(--line) !important; }
-    .text-muted, .muted, .activity-card-sub, .activity-meta, .profile-role-text, .helper-text, .field-help, .empty-desc { color: var(--text-2) !important; }
-    .telegram-auth-card, .onboarding-card, .settings-card { background: rgba(10,23,40,0.92) !important; border:1px solid var(--line); }
-    .cat-chip.active, .tab-chip.active, .filter-chip.active { background: linear-gradient(135deg,#35b9ff,#93e3ff) !important; color:#04111d !important; }
-    .sidebar-item.active { background: rgba(53,185,255,0.18) !important; }
-
-
+    /* Legacy dark overrides removed in v35 */
     [data-role-only]:not(.is-hidden) { display: flex !important; }
     [data-role-only].sidebar-post-btn:not(.is-hidden),
     [data-role-only].nav-fab-btn:not(.is-hidden) { display: inline-flex !important; }
@@ -1484,7 +1475,7 @@
     .bottom-nav, #bottom-nav { background: rgba(255,255,255,0.95) !important; border-top: 1px solid var(--line) !important; box-shadow: 0 -10px 25px rgba(15, 40, 80, 0.08) !important; }
     @media (max-width: 900px) { #desktop-sidebar { display:none !important; } .screen { padding: 14px !important; } .role-panel-actions > * { width: 100%; } }
 
-    /* v34 final accessibility + light professional UI */
+    /* v35 final accessibility + light professional UI */
     html, body { background: #eef3f9 !important; color: #18263a !important; }
     body, #mobile-view, #app-shell, .screen { background: #eef3f9 !important; }
     #desktop-sidebar { background: #ffffff !important; border-right: 1px solid #d6e0ee !important; box-shadow: 0 8px 24px rgba(15,40,80,0.06) !important; }
@@ -1510,6 +1501,16 @@
       body { background: #eef3f9 !important; }
       #mobile-view { background: transparent !important; }
     }
+
+
+    /* v35 contrast and visibility hardening */
+    .field-label, .section-label, .info-cell-label, .job-card-meta, .job-location, .job-card-phone, .detail-inline-note, .activity-inline-desc, .activity-card-sub, .activity-meta, .home-role-note, .quick-filter-note, .helper-text, .field-help, .empty-desc, .auth-subheading, .telegram-auth-desc, .telegram-auth-meta, .profile-phone, .role-panel-desc, .role-panel-metric span, .about-version-chip, .pwa-sub { color: #5c6f88 !important; }
+    .job-card-title, .detail-main-title, .activity-card-title, .activity-inline-title, .modal-title, .profile-name, .home-username, .post-topbar-title, .chats-topbar-title, .auth-heading, .role-panel-title, .about-version-value, .home-stats .stat-pill strong, .pstat strong, .info-cell-value, .menu-item-label, .si-label, .sidebar-user-name { color: #18263a !important; }
+    .text-field, .form-textarea, .phone-input-el, .otp-cell, .select-input, input, textarea, select { color: #18263a !important; background: #ffffff !important; border: 1px solid #d6e0ee !important; }
+    .text-field:focus, .form-textarea:focus, .phone-input-el:focus, .otp-cell:focus, .select-input:focus, input:focus, textarea:focus, select:focus { border-color: #7ba6ef !important; box-shadow: 0 0 0 3px rgba(31,111,235,0.10) !important; }
+    .stat-pill, .pstat, .note-chip, .meta-tag, .job-cat-tag, .job-time-tag, .user-stat-badge, .notif-badge { color: #24415f !important; }
+    .status-badge, .activity-status, .tag, .mini-btn, .btn-outline, .btn-soft, .btn-call-sm, .section-refresh-btn, .home-notif-btn { font-weight: 600; }
+    .post-form .btn-primary, .telegram-login-btn, .pwa-install-btn { color: #ffffff !important; }
 
   </style>
 </head>

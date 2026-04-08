@@ -1,6 +1,6 @@
 // ═══════════════════════════════
 // TezkorIsh — App Logic v6.0
-// real pilot web build v28
+// real pilot web build v35
 // ═══════════════════════════════
 'use strict';
 
@@ -338,6 +338,52 @@ function startBackgroundServices() {
   startRealtimeRefresh();
 }
 
+function refreshCurrentScreen(reason = '') {
+  renderUserPresenceBadges();
+  const current = typeof Router?.current === 'function' ? (Router.current() || 'home') : 'home';
+  try {
+    switch (current) {
+      case 'home':
+        initHome();
+        break;
+      case 'post':
+        initPost();
+        break;
+      case 'detail':
+        if (AppState.currentJobId) openDetail(AppState.currentJobId);
+        else initHome();
+        break;
+      case 'contracts':
+        renderContracts();
+        updateNotificationBadge();
+        break;
+      case 'chats':
+        renderActivity();
+        updateNotificationBadge();
+        break;
+      case 'saved':
+        renderSavedJobs();
+        updateNotificationBadge();
+        break;
+      case 'admin':
+        renderAdmin();
+        updateNotificationBadge();
+        break;
+      case 'profile':
+        hydrateUserUI();
+        updateProfileStats();
+        syncHelpCenterUI();
+        break;
+      default:
+        initHome();
+        break;
+    }
+  } catch (err) {
+    console.warn('refreshCurrentScreen fallback:', reason, err);
+    initHome();
+  }
+}
+
 window.addEventListener('tezkorish:remote-unauthorized', () => {
   handleUnauthorizedState('Sessiya tugagan. Qaytadan Telegram orqali kiring.');
 });
@@ -402,6 +448,18 @@ function buildMapsLink(lat, lng) {
   return `https://www.google.com/maps?q=${lat},${lng}`;
 }
 
+function openExternalMapLink(rawUrl) {
+  const url = safeExternalUrl(rawUrl, {
+    allowedProtocols: ['https:'],
+    allowedHosts: ['google.com', 'maps.google.com', 'www.google.com', 'goo.gl', 'maps.app.goo.gl', 'yandex.uz', 'yandex.com', 'yandex.ru']
+  });
+  if (!url) {
+    Toast.show('Xarita havolasi noto‘g‘ri yoki qo‘llab-quvvatlanmaydi.');
+    return;
+  }
+  window.open(url, '_blank', 'noopener');
+}
+
 function copyPhone(phone) {
   const digits = normalizeUzPhoneDigits(phone);
   if (!digits) return Toast.show('Telefon topilmadi.');
@@ -429,12 +487,7 @@ function openTelegramContact(handle) {
 function openMapForCurrentJob() {
   const job = Store.getJob(AppState.currentJobId);
   if (!job?.mapLink) return Toast.show('Xarita havolasi kiritilmagan.');
-  const url = safeExternalUrl(job.mapLink, {
-    allowedProtocols: ['https:'],
-    allowedHosts: ['google.com', 'maps.google.com', 'www.google.com', 'goo.gl', 'maps.app.goo.gl', 'yandex.uz', 'yandex.com', 'yandex.ru']
-  });
-  if (!url) return Toast.show('Xarita havolasi noto‘g‘ri yoki qo‘llab-quvvatlanmaydi.');
-  window.open(url, '_blank', 'noopener');
+  openExternalMapLink(job.mapLink);
 }
 
 function duplicateCurrentJob() {
@@ -581,7 +634,7 @@ function renderContracts() {
       </div>
       <div class="activity-meta">${escapeHtml(contract.location)} · ${contract.schedule ? escapeHtml(contract.schedule) : 'Jadval kiritilmagan'}</div>
       <div class="activity-actions">
-        ${contract.mapLink ? `<button class="mini-btn" onclick="window.open('${escapeJsString(contract.mapLink)}','_blank','noopener')">Xarita</button>` : ''}
+        ${contract.mapLink ? `<button class="mini-btn" onclick="openExternalMapLink('${escapeJsString(contract.mapLink)}')">Xarita</button>` : ''}
         <button class="mini-btn" onclick="copyPhone('${escapeJsString(contract.employerPhone || contract.workerPhone || '')}')">Telefon</button>
       </div>
     </div>`).join('')}</div>` : `<div class="empty-state"><div class="empty-icon"></div><div class="empty-title">Shartnomalar hali yo‘q</div><div class="empty-desc">Ishchi qabul qilinganda shartnoma arxivi shu yerda saqlanadi.</div></div>`;
@@ -1725,7 +1778,7 @@ function renderJobs(jobs) {
           <div class="job-card-btns">
             <button class="btn-call-sm" onclick="event.stopPropagation(); callNumber('${escapeJsString(j.phone || '')}', '${escapeJsString(j.poster)}')">Qo'ng'iroq</button>
             <button class="btn-call-sm" onclick="event.stopPropagation(); openWhatsApp('${escapeJsString(j.phone || '')}', '${escapeJsString(j.poster)}')">WhatsApp</button>
-            ${j.mapLink ? `<button class="btn-call-sm" onclick="event.stopPropagation(); window.open('${escapeJsString(j.mapLink)}','_blank','noopener')">Xarita</button>` : ''}
+            ${j.mapLink ? `<button class="btn-call-sm" onclick="event.stopPropagation(); openExternalMapLink('${escapeJsString(j.mapLink)}')">Xarita</button>` : ''}
           </div>
         </div>
         <div class="job-card-meta">
@@ -2193,7 +2246,6 @@ function submitPost() {
   if (!price) return Toast.show('Narxni kiriting.');
   if (location.length < 3) return Toast.show('Manzilni kiriting.');
   if (phone.length < 9) return Toast.show('Aloqa telefonini kiriting.');
-  if (!mapLink) return Toast.show('Xarita locationini ham biriktiring.');
 
   try {
     let job;
