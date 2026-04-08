@@ -211,9 +211,14 @@ function buildTelegramProfilePayloadFromUrl() {
   return { telegramUserId, username, photoUrl, fullName, verified };
 }
 
-function clearTelegramParamsFromUrl() {
+function clearTelegramParamsFromUrl(resetAuthHash = false) {
   const url = new URL(window.location.href);
-  ['telegram_user_id','tg_user_id','id','first_name','last_name','username','telegram_username','tg_username','photo_url','tg_photo_url','tg_verified','telegram_verified','hash','auth_date','name'].forEach(key => url.searchParams.delete(key));
+  [
+    'telegram_user_id','tg_user_id','id','first_name','last_name','username','telegram_username','tg_username',
+    'photo_url','tg_photo_url','tg_verified','telegram_verified','hash','auth_date','name','tg_new','tg_error'
+  ].forEach(key => url.searchParams.delete(key));
+  const authHashes = new Set(['#auth-name', '#auth-telegram', '#auth-phone', '#auth-otp']);
+  if (resetAuthHash || authHashes.has(url.hash)) url.hash = '';
   window.history.replaceState({}, document.title, url.pathname + (url.search ? url.search : '') + url.hash);
 }
 
@@ -848,7 +853,13 @@ function syncAuthNameScreen() {
 
 function getExistingTelegramProfiles() {
   const direct = Array.isArray(AppState.authDraft?.existingProfiles) ? AppState.authDraft.existingProfiles : [];
-  if (direct.length) return direct;
+  if (direct.length) {
+    return direct.map(item => ({
+      ...item,
+      telegramUserId: String(AppState.authDraft?.telegramUserId || item.telegramUserId || ''),
+      phoneDigits: digitsOnly(item.phoneDigits || item.phone || ''),
+    }));
+  }
   const telegramUserId = String(AppState.authDraft?.telegramUserId || '');
   if (!telegramUserId || typeof Store?.getUsersByTelegramId !== 'function') return [];
   return Store.getUsersByTelegramId(telegramUserId);
@@ -920,7 +931,11 @@ async function renderTelegramLoginOptions() {
   if (!statusEl || !metaEl || !widgetHost || !btn) return;
 
   const allowLocal = Boolean(PILOT_CONFIG?.allowLocalFallback) && !isServerPilotMode();
-  if (localCard) localCard.classList.toggle('is-hidden', !allowLocal);
+  if (localCard) {
+    localCard.classList.toggle('is-hidden', !allowLocal);
+    if (!allowLocal) localCard.setAttribute('hidden', 'hidden');
+    else localCard.removeAttribute('hidden');
+  }
 
   btn.textContent = cfg.loginButtonText || 'Telegram orqali kirish';
   btn.disabled = true;
@@ -1020,19 +1035,31 @@ async function startTelegramLogin() {
 
 function beginTelegramAuthProfileFlow(payload) {
   if (!payload?.telegramUserId) return false;
-  const existing = typeof Store?.findUserByTelegramId === 'function' ? Store.findUserByTelegramId(payload.telegramUserId) : null;
-  if (existing && typeof Store?.isValidUser === 'function' && Store.isValidUser(existing)) {
+
+  const payloadProfiles = Array.isArray(payload?.existingProfiles) ? payload.existingProfiles : [];
+  const localExisting = typeof Store?.findUserByTelegramId === 'function' ? Store.findUserByTelegramId(payload.telegramUserId) : null;
+  const singleExisting = localExisting || (payloadProfiles.length === 1 ? payloadProfiles[0] : null);
+
+  if (singleExisting && typeof Store?.isValidUser === 'function' && Store.isValidUser({
+    ...singleExisting,
+    id: singleExisting.id,
+    name: singleExisting.name,
+    role: singleExisting.role,
+    phoneDigits: digitsOnly(singleExisting.phoneDigits || singleExisting.phone || ''),
+  })) {
     AppState.user = Store.saveUser({
-      ...existing,
-      name: payload.fullName || existing.name,
+      ...singleExisting,
+      name: singleExisting.name || payload.fullName || 'Foydalanuvchi',
+      phoneDigits: digitsOnly(singleExisting.phoneDigits || singleExisting.phone || ''),
       telegramUserId: payload.telegramUserId,
-      telegramUsername: payload.username || existing.telegramUsername || '',
-      telegramPhotoUrl: payload.photoUrl || existing.telegramPhotoUrl || '',
-      avatar: existing.avatar || payload.photoUrl || existing.telegramPhotoUrl || '',
+      telegramUsername: payload.username || singleExisting.telegramUsername || '',
+      telegramPhotoUrl: payload.photoUrl || singleExisting.telegramPhotoUrl || '',
+      avatar: singleExisting.avatar || payload.photoUrl || singleExisting.telegramPhotoUrl || '',
       authProvider: 'telegram',
     });
     try { sessionStorage.setItem('tezkorish.authenticated', '1'); } catch {}
     clearAuthDraft();
+    clearTelegramParamsFromUrl(true);
     hydrateUserUI();
     initHome();
     Router.go('home', true);
@@ -1047,9 +1074,10 @@ function beginTelegramAuthProfileFlow(payload) {
     telegramUserId: String(payload.telegramUserId || ''),
     telegramUsername: sanitizeTelegramHandle(payload.username || ''),
     telegramPhotoUrl: payload.photoUrl || '',
-    existingProfiles: Array.isArray(payload.existingProfiles) ? payload.existingProfiles : [],
+    existingProfiles: payloadProfiles,
     telegramSuggestedName: payload.fullName || AppState.authDraft?.name || '',
     name: payload.fullName || AppState.authDraft?.name || '',
+    role: AppState.authDraft?.role || (payloadProfiles.length === 1 ? String(payloadProfiles[0].role || 'ishchi') : AppState.authDraft?.role),
     otpVerified: true,
   };
   const nameInput = document.getElementById('name-input');
@@ -1060,6 +1088,7 @@ function beginTelegramAuthProfileFlow(payload) {
   }
   syncAuthNameScreen();
   applyAuthPrefillForRole(AppState.authDraft?.role || 'ishchi', true);
+  clearTelegramParamsFromUrl(true);
   Router.go('auth-name', true);
   Toast.show(payload.verified ? 'Telegram tasdiqlandi. Profilni yakunlang.' : 'Telegram ma’lumoti olindi. Profilni yakunlang.');
   return true;
@@ -1069,7 +1098,7 @@ function handleTelegramCallbackFromUrl() {
   if (isServerPilotMode()) return false;
   const payload = buildTelegramProfilePayloadFromUrl();
   if (!payload) return false;
-  clearTelegramParamsFromUrl();
+  clearTelegramParamsFromUrl(true);
   return beginTelegramAuthProfileFlow(payload);
 }
 
@@ -1093,7 +1122,7 @@ async function bootstrapServerAuthSession() {
         console.error('initHome after bootstrap failed:', err);
         Toast.show('Bosh sahifani yuklashda xato bo‘ldi. Sahifani yangilang.');
       }
-      clearTelegramParamsFromUrl();
+      clearTelegramParamsFromUrl(true);
       return true;
     }
     if (state?.pendingTelegram && state.pendingTelegram.telegramUserId) {
@@ -1110,13 +1139,13 @@ async function bootstrapServerAuthSession() {
         existingProfiles: Array.isArray(state.pendingTelegram.existingProfiles) ? state.pendingTelegram.existingProfiles : [],
         verified: true,
       });
-      clearTelegramParamsFromUrl();
+      clearTelegramParamsFromUrl(true);
       return true;
     }
     if (state?.pendingTelegram?.error) {
       try { sessionStorage.removeItem('tezkorish.authenticated'); } catch {}
       Toast.show(state.pendingTelegram.error);
-      clearTelegramParamsFromUrl();
+      clearTelegramParamsFromUrl(true);
     }
   } catch (err) {
     console.warn('bootstrapServerAuthSession failed:', err);

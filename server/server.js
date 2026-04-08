@@ -692,6 +692,18 @@ async function handleApi(req, res, url) {
         phoneDigits: user.phoneDigits,
         avatar: user.avatar || user.telegramPhotoUrl || '',
       }));
+
+    if (existingProfiles.length === 1) {
+      db.sessions[sid] = {
+        createdAt: session?.createdAt || nowIso(),
+        updatedAt: nowIso(),
+        userId: existingProfiles[0].id,
+        pendingTelegram: null
+      };
+      await writeDbSafe(db);
+      return sendRedirect(res, redirectTo);
+    }
+
     db.sessions[sid] = {
       createdAt: session?.createdAt || nowIso(),
       updatedAt: nowIso(),

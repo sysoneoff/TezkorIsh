@@ -30,6 +30,10 @@ const Router = (() => {
   }
 
   function normalizeTarget(id) {
+    const authScreens = ['onboarding', 'auth-telegram', 'auth-phone', 'auth-otp', 'auth-name'];
+    if (authScreens.includes(id) && isAuthed()) {
+      return 'home';
+    }
     if (PROTECTED_SCREENS.includes(id) && !isAuthed()) {
       Toast.show("Avval ro‘yxatdan o‘ting.");
       return 'auth-telegram';
