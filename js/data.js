@@ -10,7 +10,7 @@ const SETTINGS = {
   activeJobLimit: 3,
   defaultExpiryHours: 24,
   closedRetentionHours: 72,
-  appVersion: 'real-pilot-v29',
+  appVersion: 'real-pilot-v30',
   demoAdminPhoneDigits: [],
 };
 
@@ -173,7 +173,7 @@ async function flushRemoteWriteQueue(options = {}) {
 function queueRemoteWrite(key, value, options = {}) {
   if (!shouldUseRemoteStorage()) return;
   const user = getSessionUserSnapshot();
-  if (!user && key !== STORAGE_KEYS.meta) return;
+  if (!user) return;
   remoteWriteQueue.set(key, value);
   const immediate = options.immediate || isImmediateRemoteKey(key);
   if (immediate) {
@@ -729,7 +729,7 @@ const Store = (() => {
       lat: payload.lat || null,
       lng: payload.lng || null,
         duration: payload.duration,
-        expiresAt: job.createdAt + payload.duration * 60 * 60 * 1000,
+        expiresAt: Date.now() + payload.duration * 60 * 60 * 1000,
       };
     });
 
@@ -1177,6 +1177,9 @@ const Store = (() => {
   }
 
   function importBackup(snapshot) {
+    if (shouldUseRemoteStorage()) {
+      throw new Error('Server pilot rejimida backup import o‘chirilgan.');
+    }
     if (!snapshot || typeof snapshot !== 'object' || !snapshot.data || typeof snapshot.data !== 'object') {
       throw new Error('Zaxira fayli noto‘g‘ri.');
     }

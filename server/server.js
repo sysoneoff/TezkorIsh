@@ -43,7 +43,7 @@ function defaultDb() {
     updatedAt: nowIso(),
     storage: {
       global: {
-        'tezkorish.meta': { appVersion: 'real-pilot-v29', firstInstalledAt: Date.now(), seedInitialized: true },
+        'tezkorish.meta': { appVersion: 'real-pilot-v30', firstInstalledAt: Date.now(), seedInitialized: true },
         'tezkorish.jobs': [],
         'tezkorish.applications': [],
         'tezkorish.savedJobs': [],
@@ -226,9 +226,317 @@ function ensureUserScoped(db, userId) {
   return db.storage.users[userId];
 }
 
+function isAdminUser(user) {
+  return Boolean(user && (user.isAdmin || ADMIN_TELEGRAM_IDS.has(String(user.telegramUserId || ''))));
+}
+
+function normalizePhoneDigits(value) {
+  let digits = String(value || '').replace(/\D/g, '');
+  if (digits.length === 12 && digits.startsWith('998')) digits = digits.slice(3);
+  if (digits.length > 9) digits = digits.slice(-9);
+  return digits;
+}
+
+function cloneValue(value) {
+  if (value === undefined) return undefined;
+  return JSON.parse(JSON.stringify(value));
+}
+
 function keyScope(key) {
   if (key === 'tezkorish.user' || key === 'tezkorish.settings' || key === 'tezkorish.backup') return 'user';
   return 'global';
+}
+
+function getGlobalArray(db, key) {
+  return Array.isArray(db.storage.global[key]) ? db.storage.global[key] : [];
+}
+
+function setGlobalArray(db, key, value) {
+  db.storage.global[key] = Array.isArray(value) ? value : [];
+  return db.storage.global[key];
+}
+
+function sortByCreatedDesc(list) {
+  return list.slice().sort((a, b) => Number(b?.createdAt || b?.updatedAt || 0) - Number(a?.createdAt || a?.updatedAt || 0));
+}
+
+function ensureAuthUser(db, session) {
+  if (!session?.userId) throw new Error('Session kerak.');
+  const authUser = getUserById(db, session.userId);
+  if (!authUser) throw new Error('User topilmadi.');
+  return authUser;
+}
+
+function mergeSelfUser(current, incoming) {
+  const next = { ...(current || {}) };
+  const name = String(incoming?.name || '').trim().replace(/\s+/g, ' ');
+  const role = String(incoming?.role || current?.role || '').trim();
+  const phoneDigits = normalizePhoneDigits(incoming?.phoneDigits || incoming?.phone || current?.phoneDigits || current?.phone || '');
+  if (name) next.name = name;
+  if (['ishchi', 'beruvchi'].includes(role)) next.role = role;
+  if (phoneDigits) {
+    next.phoneDigits = phoneDigits;
+    next.phone = '+998 ' + phoneDigits;
+  }
+  if (typeof incoming?.avatar === 'string') next.avatar = incoming.avatar.trim();
+  if (incoming?.availability && typeof incoming.availability === 'object') {
+    next.availability = {
+      onDuty: false,
+      lastShiftStartedAt: null,
+      lastSeenJobAt: 0,
+      ...(current?.availability || {}),
+      ...incoming.availability,
+    };
+  }
+  if (incoming?.district) next.district = String(incoming.district);
+  next.lastActiveAt = Number(incoming?.lastActiveAt || Date.now());
+  next.isAdmin = Boolean(current?.isAdmin || ADMIN_TELEGRAM_IDS.has(String(current?.telegramUserId || incoming?.telegramUserId || '')));
+  next.updatedAt = nowIso();
+  return next;
+}
+
+function mergeItemsById(existingList, incomingList, { canCreate, canUpdate, mergeItem, sort = true }) {
+  const map = new Map((Array.isArray(existingList) ? existingList : []).map(item => [String(item?.id || ''), item]).filter(([id]) => id));
+  for (const raw of Array.isArray(incomingList) ? incomingList : []) {
+    if (!raw || typeof raw !== 'object') continue;
+    const id = String(raw.id || '');
+    if (!id) continue;
+    if (map.has(id)) {
+      const existing = map.get(id);
+      if (canUpdate(existing, raw)) map.set(id, mergeItem(existing, raw, false));
+      continue;
+    }
+    if (canCreate(raw)) map.set(id, mergeItem(null, raw, true));
+  }
+  const items = Array.from(map.values());
+  return sort ? sortByCreatedDesc(items) : items;
+}
+
+function mergeMessages(existingMessages, incomingMessages) {
+  const map = new Map();
+  for (const msg of Array.isArray(existingMessages) ? existingMessages : []) {
+    const id = String(msg?.id || '');
+    if (id) map.set(id, msg);
+  }
+  for (const msg of Array.isArray(incomingMessages) ? incomingMessages : []) {
+    const id = String(msg?.id || '');
+    if (!id) continue;
+    map.set(id, { ...(map.get(id) || {}), ...cloneValue(msg) });
+  }
+  return Array.from(map.values()).sort((a, b) => Number(a?.createdAt || 0) - Number(b?.createdAt || 0));
+}
+
+function recomputeDerivedData(db) {
+  const users = getUsers(db).map(user => ({ ...user }));
+  const contracts = getGlobalArray(db, 'tezkorish.contracts');
+  const reviews = getGlobalArray(db, 'tezkorish.reviews');
+  for (const user of users) {
+    const userId = String(user.id || '');
+    user.completedJobs = contracts.filter(contract => String(contract?.workerId || '') === userId && String(contract?.status || '') === 'completed').length;
+    const related = reviews.filter(review => String(review?.toUserId || '') === userId);
+    const avg = related.length ? related.reduce((sum, review) => sum + Number(review?.score || 0), 0) / related.length : 0;
+    user.rating = Math.round(avg * 10) / 10;
+    user.phoneDigits = normalizePhoneDigits(user.phoneDigits || user.phone || '');
+    if (user.phoneDigits) user.phone = '+998 ' + user.phoneDigits;
+    user.isAdmin = Boolean(user.isAdmin || ADMIN_TELEGRAM_IDS.has(String(user.telegramUserId || '')));
+    user.updatedAt = nowIso();
+  }
+  saveUsers(db, users);
+}
+
+function mergeUsersValue(db, value, authUser) {
+  const users = new Map(getUsers(db).map(user => [String(user.id), user]));
+  if (Array.isArray(value)) {
+    const incomingSelf = value.find(item => String(item?.id || '') === String(authUser.id));
+    if (incomingSelf) users.set(String(authUser.id), mergeSelfUser(users.get(String(authUser.id)) || authUser, incomingSelf));
+    if (isAdminUser(authUser)) {
+      for (const item of value) {
+        const id = String(item?.id || '');
+        if (!id || id === String(authUser.id)) continue;
+        const existing = users.get(id);
+        if (!existing) continue;
+        users.set(id, {
+          ...existing,
+          ...cloneValue(item),
+          id: existing.id,
+          isAdmin: Boolean(existing.isAdmin || ADMIN_TELEGRAM_IDS.has(String(existing.telegramUserId || ''))),
+          updatedAt: nowIso(),
+        });
+      }
+    }
+  }
+  saveUsers(db, Array.from(users.values()));
+  recomputeDerivedData(db);
+  return getUsers(db);
+}
+
+function mergeGlobalStorageValue(db, key, value, authUser) {
+  const isAdmin = isAdminUser(authUser);
+  if (key === 'tezkorish.meta') {
+    const current = db.storage.global[key] && typeof db.storage.global[key] === 'object' ? db.storage.global[key] : {};
+    const incoming = value && typeof value === 'object' ? value : {};
+    db.storage.global[key] = {
+      ...current,
+      appVersion: 'real-pilot-v30',
+      firstInstalledAt: Number(incoming.firstInstalledAt || current.firstInstalledAt || Date.now()),
+      lastOpenedAt: Number(incoming.lastOpenedAt || current.lastOpenedAt || Date.now()),
+      seedInitialized: true,
+      lastImportedAt: Number(incoming.lastImportedAt || current.lastImportedAt || 0) || undefined,
+    };
+    return db.storage.global[key];
+  }
+
+  if (key === 'tezkorish.users') return mergeUsersValue(db, value, authUser);
+
+  const existing = getGlobalArray(db, key);
+
+  if (key === 'tezkorish.jobs') {
+    const merged = mergeItemsById(existing, value, {
+      canCreate: item => (isAdmin || authUser.role === 'beruvchi') && String(item?.ownerId || '') === String(authUser.id),
+      canUpdate: current => isAdmin || String(current?.ownerId || '') === String(authUser.id),
+      mergeItem: (current, incoming, isNew) => ({
+        ...(current || {}),
+        ...cloneValue(incoming),
+        id: current?.id || incoming.id,
+        ownerId: current?.ownerId || authUser.id,
+        poster: current?.poster || incoming.poster || authUser.name,
+        createdAt: Number(current?.createdAt || incoming.createdAt || Date.now()),
+      })
+    });
+    setGlobalArray(db, key, merged);
+    return merged;
+  }
+
+  if (key === 'tezkorish.applications') {
+    const merged = mergeItemsById(existing, value, {
+      canCreate: item => isAdmin || String(item?.workerId || '') === String(authUser.id),
+      canUpdate: current => isAdmin || String(current?.workerId || '') === String(authUser.id) || String(current?.employerId || '') === String(authUser.id),
+      mergeItem: (current, incoming) => ({
+        ...(current || {}),
+        ...cloneValue(incoming),
+        id: current?.id || incoming.id,
+        jobId: current?.jobId || incoming.jobId,
+        workerId: current?.workerId || incoming.workerId,
+        employerId: current?.employerId || incoming.employerId,
+        createdAt: Number(current?.createdAt || incoming.createdAt || Date.now()),
+      })
+    });
+    setGlobalArray(db, key, merged);
+    return merged;
+  }
+
+  if (key === 'tezkorish.savedJobs') {
+    const incoming = Array.isArray(value) ? value : [];
+    if (isAdmin) {
+      const merged = mergeItemsById(existing, incoming, {
+        canCreate: () => true,
+        canUpdate: () => true,
+        mergeItem: (current, incomingItem) => ({
+          ...(current || {}),
+          ...cloneValue(incomingItem),
+          id: current?.id || incomingItem.id,
+          workerId: current?.workerId || incomingItem.workerId,
+          jobId: current?.jobId || incomingItem.jobId,
+          createdAt: Number(current?.createdAt || incomingItem.createdAt || Date.now()),
+        })
+      });
+      setGlobalArray(db, key, merged);
+      return merged;
+    }
+    const mine = incoming
+      .filter(item => item && typeof item === 'object' && String(item.workerId || '') === String(authUser.id))
+      .map(item => ({
+        ...cloneValue(item),
+        workerId: authUser.id,
+        createdAt: Number(item.createdAt || Date.now()),
+      }));
+    const others = existing.filter(item => String(item?.workerId || '') !== String(authUser.id));
+    const merged = sortByCreatedDesc([...others, ...mine]);
+    setGlobalArray(db, key, merged);
+    return merged;
+  }
+
+  if (key === 'tezkorish.reports') {
+    const merged = mergeItemsById(existing, value, {
+      canCreate: item => isAdmin || String(item?.reporterId || '') === String(authUser.id),
+      canUpdate: current => isAdmin || String(current?.reporterId || '') === String(authUser.id),
+      mergeItem: (current, incoming) => ({
+        ...(current || {}),
+        ...cloneValue(incoming),
+        id: current?.id || incoming.id,
+        reporterId: current?.reporterId || incoming.reporterId,
+        jobId: current?.jobId || incoming.jobId,
+        createdAt: Number(current?.createdAt || incoming.createdAt || Date.now()),
+      })
+    });
+    setGlobalArray(db, key, merged);
+    return merged;
+  }
+
+  if (key === 'tezkorish.contracts') {
+    const merged = mergeItemsById(existing, value, {
+      canCreate: item => isAdmin || String(item?.employerId || '') === String(authUser.id) || String(item?.workerId || '') === String(authUser.id),
+      canUpdate: current => isAdmin || String(current?.employerId || '') === String(authUser.id) || String(current?.workerId || '') === String(authUser.id),
+      mergeItem: (current, incoming) => ({
+        ...(current || {}),
+        ...cloneValue(incoming),
+        id: current?.id || incoming.id,
+        jobId: current?.jobId || incoming.jobId,
+        applicationId: current?.applicationId || incoming.applicationId,
+        employerId: current?.employerId || incoming.employerId,
+        workerId: current?.workerId || incoming.workerId,
+        threadId: current?.threadId || incoming.threadId,
+        createdAt: Number(current?.createdAt || incoming.createdAt || Date.now()),
+      })
+    });
+    setGlobalArray(db, key, merged);
+    recomputeDerivedData(db);
+    return merged;
+  }
+
+  if (key === 'tezkorish.reviews') {
+    const merged = mergeItemsById(existing, value, {
+      canCreate: item => isAdmin || String(item?.fromUserId || '') === String(authUser.id),
+      canUpdate: current => isAdmin || String(current?.fromUserId || '') === String(authUser.id),
+      mergeItem: (current, incoming) => ({
+        ...(current || {}),
+        ...cloneValue(incoming),
+        id: current?.id || incoming.id,
+        contractId: current?.contractId || incoming.contractId,
+        fromUserId: current?.fromUserId || incoming.fromUserId,
+        toUserId: current?.toUserId || incoming.toUserId,
+        createdAt: Number(current?.createdAt || incoming.createdAt || Date.now()),
+      })
+    });
+    setGlobalArray(db, key, merged);
+    recomputeDerivedData(db);
+    return merged;
+  }
+
+  if (key === 'tezkorish.chats') {
+    const merged = mergeItemsById(existing, value, {
+      canCreate: item => isAdmin || (Array.isArray(item?.participants) && item.participants.map(v => String(v)).includes(String(authUser.id))),
+      canUpdate: current => isAdmin || (Array.isArray(current?.participants) && current.participants.map(v => String(v)).includes(String(authUser.id))),
+      sort: true,
+      mergeItem: (current, incoming) => {
+        const participants = Array.isArray(current?.participants) ? current.participants : (Array.isArray(incoming?.participants) ? incoming.participants : []);
+        return {
+          ...(current || {}),
+          ...cloneValue(incoming),
+          id: current?.id || incoming.id,
+          contractId: current?.contractId || incoming.contractId,
+          jobId: current?.jobId || incoming.jobId,
+          participants,
+          messages: mergeMessages(current?.messages, incoming?.messages),
+          updatedAt: Number(incoming?.updatedAt || current?.updatedAt || Date.now()),
+        };
+      }
+    });
+    setGlobalArray(db, key, merged);
+    return merged;
+  }
+
+  throw new Error('Bu storage kaliti yozish uchun ruxsat etilmagan.');
 }
 
 function readStorageValue(db, key, session) {
@@ -248,18 +556,18 @@ function writeStorageValue(db, key, value, session) {
   if (keyScope(key) === 'user') {
     if (!session?.userId && key !== 'tezkorish.user') throw new Error('Session kerak.');
     if (key === 'tezkorish.user') {
-      if (!session?.userId) throw new Error('Session kerak.');
-      const current = getUserById(db, session.userId);
-      if (!current) throw new Error('User topilmadi.');
-      upsertUser(db, { ...current, ...(value || {}) });
+      const authUser = ensureAuthUser(db, session);
+      const nextUser = mergeSelfUser(authUser, value || {});
+      upsertUser(db, nextUser);
+      recomputeDerivedData(db);
       return getUserById(db, session.userId);
     }
     const scoped = ensureUserScoped(db, session.userId);
-    scoped[key] = value;
-    return value;
+    scoped[key] = cloneValue(value);
+    return scoped[key];
   }
-  db.storage.global[key] = value;
-  return value;
+  const authUser = ensureAuthUser(db, session);
+  return mergeGlobalStorageValue(db, key, value, authUser);
 }
 
 function verifyTelegramLegacyAuth(params) {
@@ -473,7 +781,7 @@ async function handleApi(req, res, url) {
     const userScoped = session?.userId ? (db.storage.users[session.userId] || {}) : {};
     return sendJson(res, 200, {
       ok: true,
-      appVersion: db.storage.global['tezkorish.meta']?.appVersion || 'real-pilot-v29',
+      appVersion: db.storage.global['tezkorish.meta']?.appVersion || 'real-pilot-v30',
       authenticated: Boolean(authUser),
       authUser,
       global: db.storage.global,
@@ -548,7 +856,7 @@ async function handleApi(req, res, url) {
         }
       }
     } else {
-      delete db.storage.global[key];
+      return sendJson(res, 403, { ok: false, error: 'Global storage o‘chirish taqiqlangan.' });
     }
     await writeDbSafe(db);
     return sendJson(res, 200, { ok: true });

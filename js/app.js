@@ -166,6 +166,35 @@ function sanitizeTelegramHandle(value = '') {
   return String(value || '').trim().replace(/^@/, '');
 }
 
+function normalizeUzPhoneDigits(value = '') {
+  let digits = String(value || '').replace(/\D/g, '');
+  if (digits.length === 12 && digits.startsWith('998')) digits = digits.slice(3);
+  if (digits.length > 9) digits = digits.slice(-9);
+  return digits;
+}
+
+function safeExternalUrl(raw, options = {}) {
+  const value = String(raw || '').trim();
+  if (!value) return null;
+  const allowedProtocols = Array.isArray(options.allowedProtocols) && options.allowedProtocols.length
+    ? options.allowedProtocols
+    : ['https:'];
+  const allowedHosts = Array.isArray(options.allowedHosts) ? options.allowedHosts.map(h => String(h).toLowerCase()) : [];
+  try {
+    const url = new URL(value, window.location.origin);
+    if (!allowedProtocols.includes(url.protocol)) return null;
+    if (allowedHosts.length) {
+      const host = String(url.hostname || '').toLowerCase();
+      const ok = allowedHosts.some(allowed => host === allowed || host.endsWith('.' + allowed));
+      if (!ok) return null;
+    }
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+
 function buildTelegramProfilePayloadFromUrl() {
   const params = new URLSearchParams(window.location.search);
   const keys = getTelegramPilotConfig().callbackKeys || {};
@@ -369,28 +398,38 @@ function buildMapsLink(lat, lng) {
 }
 
 function copyPhone(phone) {
-  const value = `+998${String(phone || '').replace(/\D/g, '')}`;
+  const digits = normalizeUzPhoneDigits(phone);
+  if (!digits) return Toast.show('Telefon topilmadi.');
+  const value = `+998${digits}`;
   navigator.clipboard?.writeText(value).then(() => Toast.show('Telefon nusxalandi.')).catch(() => Toast.show(value));
 }
 
 function openWhatsApp(phone, name = '') {
-  const digits = String(phone || '').replace(/\D/g, '');
+  const digits = normalizeUzPhoneDigits(phone);
   if (!digits) return Toast.show('Telefon topilmadi.');
   const text = encodeURIComponent(`Salom, ${name || 'siz'}! TezkorIsh orqali bog'lanmoqdaman.`);
-  window.open(`https://wa.me/998${digits}?text=${text}`, '_blank', 'noopener');
+  const url = `https://wa.me/998${digits}?text=${text}`;
+  window.open(url, '_blank', 'noopener');
 }
 
 function openTelegramContact(handle) {
   const raw = String(handle || '').trim();
   if (!raw) return Toast.show('Telegram kontakti kiritilmagan.');
-  const url = raw.startsWith('http') ? raw : `https://t.me/${raw.replace(/^@/, '')}`;
+  const direct = raw.startsWith('http') ? raw : `https://t.me/${sanitizeTelegramHandle(raw)}`;
+  const url = safeExternalUrl(direct, { allowedProtocols: ['https:'], allowedHosts: ['t.me', 'telegram.me'] });
+  if (!url) return Toast.show('Telegram havolasi noto‘g‘ri.');
   window.open(url, '_blank', 'noopener');
 }
 
 function openMapForCurrentJob() {
   const job = Store.getJob(AppState.currentJobId);
   if (!job?.mapLink) return Toast.show('Xarita havolasi kiritilmagan.');
-  window.open(job.mapLink, '_blank', 'noopener');
+  const url = safeExternalUrl(job.mapLink, {
+    allowedProtocols: ['https:'],
+    allowedHosts: ['google.com', 'maps.google.com', 'www.google.com', 'goo.gl', 'maps.app.goo.gl', 'yandex.uz', 'yandex.com', 'yandex.ru']
+  });
+  if (!url) return Toast.show('Xarita havolasi noto‘g‘ri yoki qo‘llab-quvvatlanmaydi.');
+  window.open(url, '_blank', 'noopener');
 }
 
 function duplicateCurrentJob() {
@@ -1664,7 +1703,7 @@ function updateNotificationBadge() {
 }
 
 function callNumber(phone, name) {
-  const digits = String(phone || '').replace(/\D/g, '');
+  const digits = normalizeUzPhoneDigits(phone);
   if (!digits) return Toast.show('Telefon raqami topilmadi.');
   window.location.href = `tel:+998${digits}`;
   Toast.show(`Qo'ng'iroq: ${name}`);
@@ -2536,6 +2575,11 @@ function triggerImportBackup() {
 }
 
 function importLocalBackup(event) {
+  if (isServerPilotMode()) {
+    Toast.show('Server pilot rejimida backup import o‘chirilgan.');
+    if (event?.target) event.target.value = '';
+    return;
+  }
   const file = event?.target?.files?.[0];
   if (!file) return;
   const reader = new FileReader();

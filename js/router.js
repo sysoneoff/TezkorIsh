@@ -90,9 +90,7 @@ const Router = (() => {
     }
     stack.pop();
     const prev = stack[stack.length - 1] || 'home';
-    const nextScreen = screens[prev] || screens.home;
-    if (!nextScreen) return;
-    showScreen(prev, true);
+    go(prev, true);
   }
 
   function current() {

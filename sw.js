@@ -1,6 +1,12 @@
-const CACHE_NAME = 'tezkorish-real-pilot-v27';
-const STATIC_ASSETS = [
+const CACHE_NAME = 'tezkorish-real-pilot-v30';
+const APP_SHELL = [
+  './',
+  './index.html',
   './manifest.json',
+  './css/app.css',
+  './js/app.js',
+  './js/data.js',
+  './js/router.js',
   './icons/icon-72.png',
   './icons/icon-96.png',
   './icons/icon-128.png',
@@ -15,28 +21,33 @@ const STATIC_ASSETS = [
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(STATIC_ASSETS))
+      .then(cache => cache.addAll(APP_SHELL))
       .then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))))
       .then(() => self.clients.claim())
   );
 });
 
+function isAppShellRequest(url) {
+  return url.pathname === '/' || url.pathname.endsWith('/index.html') || url.pathname.endsWith('.js') || url.pathname.endsWith('.css');
+}
+
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
+
   if (url.pathname.startsWith('/api/') || url.pathname.endsWith('/js/pilot-config.js') || url.pathname.endsWith('pilot-config.js')) {
     event.respondWith(fetch(event.request));
     return;
   }
 
-  const isAppShell = url.pathname === '/' || url.pathname.endsWith('/index.html') || url.pathname.endsWith('.js') || url.pathname.endsWith('.css');
-  if (isAppShell) {
+  if (isAppShellRequest(url)) {
     event.respondWith(
       fetch(event.request)
         .then(response => {
@@ -44,17 +55,23 @@ self.addEventListener('fetch', event => {
           caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone)).catch(() => {});
           return response;
         })
-        .catch(() => caches.match(event.request).then(cached => cached || caches.match('./index.html')))
+        .catch(async () => (await caches.match(event.request)) || caches.match('./index.html'))
     );
     return;
   }
 
   event.respondWith(
-    caches.match(event.request).then(cached => cached || fetch(event.request).then(response => {
-      const clone = response.clone();
-      caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone)).catch(() => {});
-      return response;
-    }).catch(() => caches.match('./index.html')))
+    caches.match(event.request).then(async cached => {
+      if (cached) return cached;
+      try {
+        const response = await fetch(event.request);
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone)).catch(() => {});
+        return response;
+      } catch {
+        return caches.match('./index.html');
+      }
+    })
   );
 });
 
