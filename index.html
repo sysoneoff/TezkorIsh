@@ -137,7 +137,7 @@
       font-size: 22px;
       font-weight: 800;
       letter-spacing: -0.5px;
-      color: var(--white);
+      color: var(--text);
     }
     .sidebar-logo-text span { color: var(--accent); }
     .sidebar-logo-sub {
@@ -1123,7 +1123,7 @@
       border-radius: var(--r-md);
     }
     .support-mini-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); margin-bottom: 2px; }
-    .about-version-value { font-family: var(--font-head); font-size: 16px; font-weight: 700; color: var(--white); }
+    .about-version-value { font-family: var(--font-head); font-size: 16px; font-weight: 700; color: var(--text); }
     .about-version-chip {
       font-size: 11px;
       padding: 4px 10px;
@@ -1484,6 +1484,33 @@
     .bottom-nav, #bottom-nav { background: rgba(255,255,255,0.95) !important; border-top: 1px solid var(--line) !important; box-shadow: 0 -10px 25px rgba(15, 40, 80, 0.08) !important; }
     @media (max-width: 900px) { #desktop-sidebar { display:none !important; } .screen { padding: 14px !important; } .role-panel-actions > * { width: 100%; } }
 
+    /* v34 final accessibility + light professional UI */
+    html, body { background: #eef3f9 !important; color: #18263a !important; }
+    body, #mobile-view, #app-shell, .screen { background: #eef3f9 !important; }
+    #desktop-sidebar { background: #ffffff !important; border-right: 1px solid #d6e0ee !important; box-shadow: 0 8px 24px rgba(15,40,80,0.06) !important; }
+    .sidebar-logo-text, .sidebar-logo-sub, .sidebar-user-name, .sidebar-user-role, .si-label, .sidebar-item, .sidebar-item .si-label, .sidebar-item .si-icon { color: #18263a !important; }
+    .sidebar-item.active { background: #eaf2ff !important; border: 1px solid #cfe0fb !important; }
+    .sidebar-item.active .si-label, .sidebar-item.active .si-icon { color: #1f6feb !important; }
+    .sidebar-post-btn, .btn-primary, .btn-call-lg, .ob-next-btn, .telegram-login-btn { background: linear-gradient(180deg, #2d76f4 0%, #1f6feb 100%) !important; color: #ffffff !important; border: none !important; box-shadow: 0 12px 24px rgba(31,111,235,0.18) !important; }
+    .sidebar-user, .sidebar-item, .home-header, .screen-header, .post-topbar, .chats-topbar, .detail-topbar, .profile-hero, .telegram-auth-card, .job-card, .stat-pill, .menu-item, .pstat, .section-refresh-btn, .home-search, .role-card, .quick-filter-btn, .cat-chip, .detail-cta-bar, .detail-body, .post-form, .info-cell, .activity-card, .activity-inline-card, .contract-card, .settings-card, .support-faq-item, .role-panel, .profile-section, .card, .modal-sheet { background: #ffffff !important; color: #18263a !important; border: 1px solid #d6e0ee !important; box-shadow: 0 8px 24px rgba(15,40,80,0.06) !important; }
+    .home-search-input, .text-field, .form-textarea, .phone-input-el, .otp-cell, .select-input, input, textarea, select { background: #ffffff !important; color: #18263a !important; border: 1px solid #d6e0ee !important; }
+    input::placeholder, textarea::placeholder, .phone-input-el::placeholder, .text-field::placeholder, .form-textarea::placeholder { color: #6f7f95 !important; opacity: 1 !important; }
+    .field-label, .section-label, .home-greeting, .auth-subheading, .job-card-desc, .empty-desc, .helper-text, .field-help, .telegram-auth-desc, .telegram-auth-meta, .profile-phone, .section-more, .stat-pill-label, .pstat-label, .menu-item-arrow, .activity-card-sub, .activity-meta, .profile-role-text, .support-faq-a, .home-role-note, .quick-filter-note { color: #5f7088 !important; }
+    .home-username, .auth-heading, .post-topbar-title, .chats-topbar-title, .profile-name, .detail-main-title, .job-card-title, .psec-title, .activity-card-title, .about-version-value, .role-panel-title { color: #18263a !important; }
+    .role-panel-desc, .role-panel-metric span, .sidebar-logo-sub { color: #6f7f95 !important; }
+    .role-panel-metric { background: #f7faff !important; border: 1px solid #d6e0ee !important; }
+    .role-panel-metric strong { color: #18263a !important; }
+    .quick-filter-btn, .cat-chip, .btn-outline, .btn-soft, .mini-btn, .btn-call-sm, .section-refresh-btn, .home-notif-btn, .meta-tag, .job-cat-tag, .job-time-tag, .note-chip, .profile-role-tag, .user-stat-badge, .notif-badge { background: #f7faff !important; color: #24415f !important; border: 1px solid #d6e0ee !important; }
+    .quick-filter-btn.active, .cat-chip.active, .role-card.selected, .sidebar-item.active { background: #eaf2ff !important; color: #1f6feb !important; border-color: #cfe0fb !important; }
+    .si-icon, .menu-item-icon, .rc-icon, .telegram-auth-icon, .support-link-icon { width: 32px; height: 32px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; background: #edf4ff !important; color: #1f6feb !important; font-weight: 800; font-size: 13px; }
+    .ob-illustration, .splash-icon, .cat-chip-icon, .empty-icon { display: none !important; }
+    .job-card, .activity-card, .contract-card, .profile-section, .post-form, .settings-card, .support-faq-item { backdrop-filter: none !important; }
+    #bottom-nav, .bottom-nav { background: rgba(255,255,255,0.96) !important; border-top: 1px solid #d6e0ee !important; box-shadow: 0 -8px 20px rgba(15,40,80,0.08) !important; }
+    @media (min-width: 768px) {
+      body { background: #eef3f9 !important; }
+      #mobile-view { background: transparent !important; }
+    }
+
   </style>
 </head>
 <body>
@@ -1518,7 +1545,7 @@
     </nav>
 
     <button class="sidebar-post-btn" data-role-only="beruvchi" onclick="Router.go('post')">
-      ➕ E'lon berish
+      E'lon berish
     </button>
 
     <div class="sidebar-user" onclick="Router.go('profile')">
@@ -1625,7 +1652,7 @@
             <div class="field-label">Telefon raqam (sinov)</div>
             <div class="phone-field">
               <div class="phone-prefix">
-                <span class="flag">🇺🇿</span>
+                <span class="flag">UZ</span>
                 <span>+998</span>
               </div>
               <input
@@ -1693,7 +1720,7 @@
             <div class="field-label">Telefon raqam (profil uchun)</div>
             <div class="phone-field">
               <div class="phone-prefix">
-                <span class="flag">🇺🇿</span>
+                <span class="flag">UZ</span>
                 <span>+998</span>
               </div>
               <input
@@ -1949,7 +1976,7 @@
               <span class="menu-item-badge" id="report-count-badge">0</span>
             </div>
             <div class="menu-item" onclick="resetDemoConfirm()">
-              <span class="menu-item-icon">❓</span>
+              <span class="menu-item-icon">?</span>
               <span class="menu-item-text">Lokal ma'lumotni tozalash</span>
               <span class="menu-item-arrow">›</span>
             </div>
@@ -1965,7 +1992,7 @@
           <div class="psec-title">Dastur va yordam</div>
           <div class="menu-row">
             <div class="menu-item" onclick="openAboutScreen()">
-              <span class="menu-item-icon">ℹ️</span>
+              <span class="menu-item-icon">i</span>
               <span class="menu-item-text">Dastur haqida</span>
               <span class="menu-item-badge" id="about-version-badge">—</span>
             </div>
@@ -1979,7 +2006,7 @@
       <div class="screen" id="screen-about">
         <div class="chats-topbar about-topbar">
           <button class="btn-back in-topbar" onclick="Router.back()">←</button>
-          <div class="chats-topbar-title">Dastur haqida ℹ️</div>
+          <div class="chats-topbar-title">Dastur haqida</div>
           <div class="chats-topbar-sub">Versiya, yaratuvchi, saqlash va SysOne yordam markazi</div>
         </div>
 
@@ -2035,7 +2062,7 @@
                 </span>
               </a>
               <a class="support-link-card support-email" href="/cdn-cgi/l/email-protection#e7949e94888982888181a7808a868e8bc984888a">
-                <span class="support-link-icon">✉️</span>
+                <span class="support-link-icon">@</span>
                 <span>
                   <strong>Email yuborish</strong>
                   <small>Taklif, muammo va hamkorlik uchun</small>
@@ -2083,7 +2110,7 @@
       <div class="screen" id="screen-settings">
         <div class="chats-topbar about-topbar">
           <button class="btn-back in-topbar" onclick="Router.back()">←</button>
-          <div class="chats-topbar-title">Sozlamalar ⚙️</div>
+          <div class="chats-topbar-title">Sozlamalar</div>
           <div class="chats-topbar-sub">Theme, mos toifalar va yaqin joylar filtri</div>
         </div>
         <div id="settings-body"></div>
@@ -2187,7 +2214,7 @@
       <div class="pwa-title">Ilovani o'rnating</div>
       <div class="pwa-sub">Tezroq ishga tushadi, offline ham ishlaydi</div>
     </div>
-    <button class="pwa-close" onclick="PWA.dismiss()">✕</button>
+    <button class="pwa-close" onclick="PWA.dismiss()">×</button>
   </div>
   <button class="pwa-install-btn" onclick="PWA.install()">
     Ekranga qo'shish

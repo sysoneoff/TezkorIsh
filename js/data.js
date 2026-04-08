@@ -10,7 +10,7 @@ const SETTINGS = {
   activeJobLimit: 3,
   defaultExpiryHours: 24,
   closedRetentionHours: 72,
-  appVersion: 'real-pilot-v33',
+  appVersion: 'real-pilot-v34',
   demoAdminPhoneDigits: [],
 };
 
@@ -233,15 +233,15 @@ window.addEventListener('pagehide', () => {
 
 
 const CATEGORIES = [
-  { id: 'hammasi', icon: '🔥', name: 'Hammasi' },
-  { id: 'yukchi', icon: '🚚', name: 'Yukchi' },
-  { id: 'qurilish', icon: '🏗️', name: 'Qurilish' },
-  { id: 'tozalovchi', icon: '🧹', name: 'Tozalovchi' },
-  { id: 'qorovul', icon: '👮', name: "Qo'riqchi" },
-  { id: 'haydovchi', icon: '🚗', name: 'Haydovchi' },
-  { id: 'bogbon', icon: '🌿', name: "Bog'bon" },
-  { id: 'oshpaz', icon: '🍳', name: 'Oshpaz' },
-  { id: 'boshqa', icon: '⚙️', name: 'Boshqa' },
+  { id: 'hammasi', icon: '', name: 'Hammasi' },
+  { id: 'yukchi', icon: '', name: 'Yukchi' },
+  { id: 'qurilish', icon: '', name: 'Qurilish' },
+  { id: 'tozalovchi', icon: '', name: 'Tozalovchi' },
+  { id: 'qorovul', icon: '', name: "Qo'riqchi" },
+  { id: 'haydovchi', icon: '', name: 'Haydovchi' },
+  { id: 'bogbon', icon: '', name: "Bog'bon" },
+  { id: 'oshpaz', icon: '', name: 'Oshpaz' },
+  { id: 'boshqa', icon: '', name: 'Boshqa' },
 ];
 
 const POST_CATEGORIES = CATEGORIES.filter(c => c.id !== 'hammasi');
@@ -365,13 +365,21 @@ const Store = (() => {
 
 
   function loadSettingsRaw() {
-    return safeRead(STORAGE_KEYS.settings, {
-      theme: 'sysone',
+    const loaded = safeRead(STORAGE_KEYS.settings, {
+      theme: 'white',
       preferredCats: [],
       nearbyRadiusKm: 10,
       workerLocation: null,
       workerAddress: '',
-    });
+    }) || {};
+    return {
+      ...loaded,
+      theme: 'white',
+      preferredCats: Array.isArray(loaded.preferredCats) ? loaded.preferredCats : [],
+      nearbyRadiusKm: Number(loaded.nearbyRadiusKm || 10) || 10,
+      workerLocation: loaded.workerLocation || null,
+      workerAddress: loaded.workerAddress || '',
+    };
   }
 
   function saveSettings(settings) {
@@ -379,6 +387,7 @@ const Store = (() => {
     const next = {
       ...current,
       ...(settings || {}),
+      theme: 'white',
       preferredCats: Array.isArray(settings?.preferredCats ?? current.preferredCats)
         ? Array.from(new Set((settings?.preferredCats ?? current.preferredCats).filter(Boolean)))
         : [],

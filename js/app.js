@@ -131,7 +131,7 @@ const AuthAPI = {
 function getAppSettings() {
   return typeof Store?.getSettings === 'function'
     ? Store.getSettings()
-    : { theme: 'sysone', preferredCats: [], nearbyRadiusKm: 10, workerLocation: null, workerAddress: '' };
+    : { theme: 'white', preferredCats: [], nearbyRadiusKm: 10, workerLocation: null, workerAddress: '' };
 }
 
 function saveAppSettings(patch) {
@@ -143,7 +143,7 @@ function saveAppSettings(patch) {
 }
 
 function applyTheme(theme) {
-  document.documentElement.setAttribute('data-theme', 'sysone');
+  document.documentElement.setAttribute('data-theme', 'white');
 }
 
 function normalizeDisplayName(name) {
@@ -543,7 +543,7 @@ function renderSettingsScreen() {
   body.innerHTML = `
     <div class="profile-section about-page-section">
       <div class="psec-title">Ilova mavzusi</div>
-      <div class="settings-note">SysOne theme doimiy yoqilgan.</div>
+      <div class="settings-note">Yorug‘ va rasmiy mavzu yoqilgan.</div>
     </div>
     <div class="profile-section about-page-section">
       <div class="psec-title">Ishchi filtrlari</div>
@@ -575,7 +575,7 @@ function renderContracts() {
       <div class="activity-card-head">
         <div>
           <div class="activity-card-title">${escapeHtml(contract.title)}</div>
-          <div class="activity-card-sub">${escapeHtml(contract.employerName)} ↔ ${escapeHtml(contract.workerName)}</div>
+          <div class="activity-card-sub">${escapeHtml(contract.employerName)} va ${escapeHtml(contract.workerName)}</div>
         </div>
         <span class="activity-status ${contract.status}">${statusLabel(contract.status)}</span>
       </div>
@@ -1587,7 +1587,7 @@ function refreshHomeJobs(showToast = false) {
 
     if (refreshBtn) {
       refreshBtn.classList.remove('is-loading');
-      refreshBtn.textContent = '⟳ Reflesh';
+      refreshBtn.textContent = 'Reflesh';
     }
 
     if (showToast) {
@@ -1844,7 +1844,7 @@ function openDetail(jobId) {
       <span class="tag tag-cat">${getCatIcon(j.cat)} ${getCatName(j.cat)}</span>
       <span class="tag tag-time">⏱ ${formatRelative(j.createdAt)} oldin</span>
       <span class="tag tag-views">${j.views || 0}</span>
-      <span class="tag tag-active">✅ ${statusLabel(j.status)}</span>
+      <span class="tag tag-active">${statusLabel(j.status)}</span>
     </div>
 
     <div class="price-hero">
@@ -1859,7 +1859,7 @@ function openDetail(jobId) {
     <div class="detail-action-row">
       ${AppState.user?.role === 'ishchi' ? `<button class="mini-btn" onclick="toggleSaveCurrentJob()">${isSaved ? 'Saqlandi' : 'Saqlash'}</button>` : ''}
       ${!isOwner && j.status === 'active' ? `<button class="mini-btn reject" onclick="reportCurrentJob()">Xabar berish</button>` : ''}
-      ${isOwner && j.status === 'active' ? `<button class="mini-btn" onclick="editCurrentJob()">✏️ Tahrirlash</button>` : ''}
+      ${isOwner && j.status === 'active' ? `<button class="mini-btn" onclick="editCurrentJob()">Tahrirlash</button>` : ''}
       ${isOwner && j.status === 'active' ? `<button class="mini-btn" onclick="duplicateCurrentJob()">Nusxa</button>` : ''}
       <button class="mini-btn" onclick="copyJobLink()">Ulashish</button>
     </div>
@@ -1906,7 +1906,7 @@ function openDetail(jobId) {
       <div class="poster-avatar">${escapeHtml((j.poster || '?')[0] || '?')}</div>
       <div>
         <div class="poster-name">${escapeHtml(j.poster)}</div>
-        <div class="poster-stars">⭐ ${Number(j.posterRating || 0) ? Number(j.posterRating).toFixed(1) : '—'} <span>(${j.posterDeals || 0} bajarilgan ish)</span></div>
+        <div class="poster-stars">Reyting: ${Number(j.posterRating || 0) ? Number(j.posterRating).toFixed(1) : '—'} <span>(${j.posterDeals || 0} bajarilgan ish)</span></div>
         <div class="poster-deals">${SETTINGS.district}</div>
       </div>
     </div>`;
@@ -1926,7 +1926,7 @@ function renderEmployerDetailActions(job, applicantCount) {
   if (job.status === 'active') {
     return `
       <button class="btn-outline" onclick="Router.go('chats')">${applicantCount} nomzod</button>
-      <button class="btn-call-lg" onclick="closeCurrentJob()">✅ E'lonni yopish</button>`;
+      <button class="btn-call-lg" onclick="closeCurrentJob()">E'lonni yopish</button>`;
   }
   if (['assigned', 'in_progress'].includes(job.status)) {
     return `
@@ -1935,7 +1935,7 @@ function renderEmployerDetailActions(job, applicantCount) {
   }
   return `
     <button class="btn-outline" onclick="Router.go('chats')">Faollik</button>
-    <button class="btn-call-lg" onclick="Toast.show('Bu e’lon yakunlangan.')">✅ Yakunlangan</button>`;
+    <button class="btn-call-lg" onclick="Toast.show('Bu e’lon yakunlangan.')">Yakunlangan</button>`;
 }
 
 function setEmployerHomeStatus(status) {
@@ -1955,7 +1955,7 @@ function renderViewerDetailActions(job, myApplication) {
     } else if (myApplication?.status === 'in_progress') {
       primaryAction = `<button class="btn-outline" disabled>Siz hozir bu ishda ishlayapsiz</button>`;
     } else if (myApplication?.status === 'completed') {
-      primaryAction = `<button class="btn-outline" disabled>✅ Bu ish yakunlangan</button>`;
+      primaryAction = `<button class="btn-outline" disabled>Bu ish yakunlangan</button>`;
     } else if (myApplication && ['rejected', 'withdrawn', 'job_closed', 'expired'].includes(myApplication.status)) {
       primaryAction = `<button class="btn-outline" ${job.status !== 'active' ? 'disabled' : ''} onclick="expressInterest()">Qayta murojaat</button>`;
     }
@@ -2120,7 +2120,7 @@ function resetPostForm() {
   AppState.editingJobId = null;
   document.querySelectorAll('.cat-pick').forEach(c => c.classList.remove('active'));
   document.querySelectorAll('.dur-btn').forEach(b => b.classList.toggle('active', b.dataset.h === String(SETTINGS.defaultExpiryHours)));
-  document.querySelector('#screen-post .post-topbar-title').textContent = "E'lon berish ➕";
+  document.querySelector('#screen-post .post-topbar-title').textContent = "E'lon berish";
   document.querySelector('#screen-post .post-topbar-sub').textContent = "~90 soniyada e'lon bering, 100% bepul";
 }
 
@@ -2129,7 +2129,7 @@ function editCurrentJob() {
   if (!job) return;
   AppState.editingJobId = job.id;
   prefillPostForm(job);
-  document.querySelector('#screen-post .post-topbar-title').textContent = "E'lonni tahrirlash ✏️";
+  document.querySelector('#screen-post .post-topbar-title').textContent = "E'lonni tahrirlash";
   document.querySelector('#screen-post .post-topbar-sub').textContent = "Mavjud e'lonni yangilang";
   Router.go('post');
 }
@@ -2139,7 +2139,7 @@ function editJobFromList(jobId) {
   if (!job) return;
   AppState.editingJobId = job.id;
   prefillPostForm(job);
-  document.querySelector('#screen-post .post-topbar-title').textContent = "E'lonni tahrirlash ✏️";
+  document.querySelector('#screen-post .post-topbar-title').textContent = "E'lonni tahrirlash";
   document.querySelector('#screen-post .post-topbar-sub').textContent = "Mavjud e'lonni yangilang";
   Router.go('post');
 }
@@ -2290,8 +2290,8 @@ function renderActivity() {
             <div class="activity-actions">
               <button class="mini-btn" onclick="callNumber('${escapeJsString(app.workerPhone || '')}', '${escapeJsString(app.workerName)}')">Qo'ng'iroq</button>
               <button class="mini-btn" onclick="openWhatsApp('${escapeJsString(app.workerPhone || '')}', '${escapeJsString(app.workerName)}')">WhatsApp</button>
-              <button class="mini-btn accept" onclick="setApplicationStatus('${app.id}', 'accepted')">✅ Qabul qilish</button>
-              <button class="mini-btn reject" onclick="setApplicationStatus('${app.id}', 'rejected')">✖ Rad etish</button>
+              <button class="mini-btn accept" onclick="setApplicationStatus('${app.id}', 'accepted')">Qabul qilish</button>
+              <button class="mini-btn reject" onclick="setApplicationStatus('${app.id}', 'rejected')">Rad etish</button>
             </div>
           </div>`).join('') : `<div class="empty-state compact"><div class="empty-title">Hali yangi nomzod yo'q</div><div class="empty-desc">Ishchilar murojaat qilganda shu yerda ko'rinadi</div></div>`}
 
@@ -2330,10 +2330,10 @@ function renderActivity() {
             <div class="activity-meta">${formatMoney(job.price)} so'm · ${escapeHtml(job.location)} · ${formatHoursLeft(job.expiresAt)}</div>
             <div class="activity-actions">
               <button class="mini-btn" onclick="openDetail(${job.id})">Ochish</button>
-              ${job.status === 'active' ? `<button class="mini-btn" onclick="editJobFromList(${job.id})">✏️ Tahrir</button>` : ''}
+              ${job.status === 'active' ? `<button class="mini-btn" onclick="editJobFromList(${job.id})">Tahrir</button>` : ''}
               ${job.status === 'active' ? `<button class="mini-btn" onclick="duplicateJobFromList(${job.id})">Nusxa</button>` : ''}
               ${job.status === 'active' ? `<button class="mini-btn reject" onclick="closeJobFromList(${job.id})">Yopish</button>` : `<button class="mini-pill">${pendingCount} nomzod</button>`}
-              ${contract ? `<button class="mini-btn accept" onclick="openReviewPrompt('${contract.id}', '${contract.workerId}')">⭐ Ishchini baholash</button>` : ''}
+              ${contract ? `<button class="mini-btn accept" onclick="openReviewPrompt('${contract.id}', '${contract.workerId}')">Ishchini baholash</button>` : ''}
             </div>
           </div>`;
         }).join('') : `<div class="empty-state compact"><div class="empty-title">Bu holatda e'lon yo'q</div><div class="empty-desc">Filter bo‘yicha boshqa e’lon topilmadi</div></div>`}
@@ -2363,7 +2363,7 @@ function renderActivity() {
               <button class="mini-btn" onclick="callNumber('${escapeJsString(app.employerPhone || '')}', '${escapeJsString(app.employerName)}')">Qo'ng'iroq</button>
               ${app.status === 'pending' ? `<button class="mini-btn reject" onclick="cancelMyApplication('${app.id}')">↩ Bekor qilish</button>` : ''}
               ${app.status === 'accepted' ? `<button class="mini-btn accept" onclick="startAcceptedWork('${app.id}')">▶ Start</button>` : ''}
-              ${app.status === 'completed' ? `<button class="mini-btn accept" onclick="rateEmployerForApplication('${app.id}')">⭐ Baholash</button>` : ''}
+              ${app.status === 'completed' ? `<button class="mini-btn accept" onclick="rateEmployerForApplication('${app.id}')">Baholash</button>` : ''}
             </div>
           </div>`).join('') : `<div class="empty-state compact"><div class="empty-title">Hali murojaat yo'q</div><div class="empty-desc">Yoqqan e'loningizga “Qiziqdim” tugmasini bosing</div></div>`}
       </div>`;
@@ -2501,7 +2501,7 @@ function renderAdmin() {
           <div class="activity-meta">${formatRelative(report.createdAt)} oldin · ${escapeHtml(report.employerName)}</div>
           <div class="activity-actions">
             <button class="mini-btn" onclick="openDetail(${report.jobId})">E'lon</button>
-            ${report.status === 'open' ? `<button class="mini-btn accept" onclick="resolveReport('${report.id}')">✅ Yopish</button>` : `<button class="mini-pill">✔ Ko‘rib chiqilgan</button>`}
+            ${report.status === 'open' ? `<button class="mini-btn accept" onclick="resolveReport('${report.id}')">Yopish</button>` : `<button class="mini-pill">Ko‘rib chiqilgan</button>`}
           </div>
         </div>`).join('') : `<div class="empty-state compact"><div class="empty-title">Hisobotlar yo'q</div><div class="empty-desc">Foydalanuvchi xabar berganda shu yerda ko'rinadi</div></div>`}
 

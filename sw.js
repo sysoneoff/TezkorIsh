@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tezkorish-real-pilot-v33';
+const CACHE_NAME = 'tezkorish-real-pilot-v34';
 const APP_SHELL = [
   './',
   './index.html',
