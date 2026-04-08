@@ -2484,3 +2484,8 @@ html[data-theme='white'] {
 .theme-grid,.theme-card{display:none !important;}
 .settings-note{padding:12px 14px;border:1px solid var(--border);border-radius:14px;background:rgba(53,185,255,0.08);color:var(--text);font-weight:600;}
 .telegram-auth-card.muted.is-hidden{display:none !important;}
+
+
+/* v32 official light UI overrides */
+[data-role-only]:not(.is-hidden){display:flex!important;}
+[data-role-only].sidebar-post-btn:not(.is-hidden), [data-role-only].nav-fab-btn:not(.is-hidden){display:inline-flex!important;}

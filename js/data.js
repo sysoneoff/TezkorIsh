@@ -10,7 +10,7 @@ const SETTINGS = {
   activeJobLimit: 3,
   defaultExpiryHours: 24,
   closedRetentionHours: 72,
-  appVersion: 'real-pilot-v31',
+  appVersion: 'real-pilot-v32',
   demoAdminPhoneDigits: [],
 };
 
@@ -487,8 +487,17 @@ const Store = (() => {
     return loadUsersRaw().find(item => String(item.phoneDigits) === String(phoneDigits) && (!role || item.role === role)) || null;
   }
 
+  function getUsersByTelegramId(telegramUserId) {
+    return loadUsersRaw().filter(item => String(item.telegramUserId || '') === String(telegramUserId || ''));
+  }
+
   function findUserByTelegramId(telegramUserId) {
-    return loadUsersRaw().find(item => String(item.telegramUserId || '') === String(telegramUserId || '')) || null;
+    return getUsersByTelegramId(telegramUserId)[0] || null;
+  }
+
+  function findUserByTelegramIdRole(telegramUserId, role) {
+    const normalizedRole = normalizeRole(role);
+    return loadUsersRaw().find(item => String(item.telegramUserId || '') === String(telegramUserId || '') && (!normalizedRole || normalizeRole(item.role) === normalizedRole)) || null;
   }
 
   function getUserById(userId) {
@@ -1235,6 +1244,8 @@ const Store = (() => {
     clearUser,
     findUserByPhoneRole,
     findUserByTelegramId,
+    findUserByTelegramIdRole,
+    getUsersByTelegramId,
     getUserById,
     ensureSeeded,
     loadJobs: getAllJobs,

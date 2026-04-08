@@ -207,8 +207,16 @@ function getUserById(db, userId) {
   return getUsers(db).find(u => String(u.id) === String(userId)) || null;
 }
 
+function getUsersByTelegramId(db, telegramUserId) {
+  return getUsers(db).filter(u => String(u.telegramUserId || '') === String(telegramUserId || ''));
+}
+
 function getUserByTelegramId(db, telegramUserId) {
-  return getUsers(db).find(u => String(u.telegramUserId || '') === String(telegramUserId || '')) || null;
+  return getUsersByTelegramId(db, telegramUserId)[0] || null;
+}
+
+function getUserByTelegramIdRole(db, telegramUserId, role) {
+  return getUsers(db).find(u => String(u.telegramUserId || '') === String(telegramUserId || '') && String(u.role || '') === String(role || '')) || null;
 }
 
 function upsertUser(db, user) {
@@ -675,20 +683,21 @@ async function handleApi(req, res, url) {
       await writeDbSafe(db);
       return sendRedirect(res, `${redirectTo}${redirectTo.includes('?') ? '&' : '?'}tg_error=1`);
     }
-    const existing = getUserByTelegramId(db, payload.telegramUserId);
-    if (existing && isCompleteUser(existing)) {
-      const nextUser = upsertUser(db, {
-        ...existing,
-        telegramUsername: payload.username || existing.telegramUsername || '',
-        telegramPhotoUrl: payload.photoUrl || existing.telegramPhotoUrl || '',
-        avatar: existing.avatar || payload.photoUrl || existing.telegramPhotoUrl || '',
-        isAdmin: existing.isAdmin || ADMIN_TELEGRAM_IDS.has(String(payload.telegramUserId))
-      });
-      db.sessions[sid] = { createdAt: session?.createdAt || nowIso(), updatedAt: nowIso(), userId: nextUser.id, pendingTelegram: null };
-      await writeDbSafe(db);
-      return sendRedirect(res, `${redirectTo}${redirectTo.includes('?') ? '&' : '?'}tg_ok=1`);
-    }
-    db.sessions[sid] = { createdAt: session?.createdAt || nowIso(), updatedAt: nowIso(), userId: null, pendingTelegram: payload };
+    const existingProfiles = getUsersByTelegramId(db, payload.telegramUserId)
+      .filter(isCompleteUser)
+      .map(user => ({
+        id: user.id,
+        role: user.role,
+        name: user.name,
+        phoneDigits: user.phoneDigits,
+        avatar: user.avatar || user.telegramPhotoUrl || '',
+      }));
+    db.sessions[sid] = {
+      createdAt: session?.createdAt || nowIso(),
+      updatedAt: nowIso(),
+      userId: null,
+      pendingTelegram: { ...payload, existingProfiles }
+    };
     await writeDbSafe(db);
     return sendRedirect(res, `${redirectTo}${redirectTo.includes('?') ? '&' : '?'}tg_new=1#auth-name`);
   }
@@ -704,10 +713,10 @@ async function handleApi(req, res, url) {
     if (name.length < 2) return sendJson(res, 400, { ok: false, error: 'Ism noto‘g‘ri.' });
     if (phoneDigits.length < 9) return sendJson(res, 400, { ok: false, error: 'Telefon raqam noto‘g‘ri.' });
     if (!role) return sendJson(res, 400, { ok: false, error: 'Rol tanlanmagan.' });
-
     let user = session?.userId ? getUserById(db, session.userId) : null;
     const pending = session?.pendingTelegram || null;
-    if (!user && pending?.telegramUserId) user = getUserByTelegramId(db, pending.telegramUserId);
+    if (user && String(user.role || '') !== String(role)) user = null;
+    if (!user && pending?.telegramUserId) user = getUserByTelegramIdRole(db, pending.telegramUserId, role);
     if (!user && !pending?.telegramUserId) {
       return sendJson(res, 401, { ok: false, error: 'Telegram auth tasdiqlanmagan.' });
     }
@@ -781,7 +790,7 @@ async function handleApi(req, res, url) {
     const userScoped = session?.userId ? (db.storage.users[session.userId] || {}) : {};
     return sendJson(res, 200, {
       ok: true,
-      appVersion: db.storage.global['tezkorish.meta']?.appVersion || 'real-pilot-v31',
+      appVersion: db.storage.global['tezkorish.meta']?.appVersion || 'real-pilot-v32',
       authenticated: Boolean(authUser),
       authUser,
       global: db.storage.global,

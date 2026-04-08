@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#0A0A0A">
+  <meta name="theme-color" content="#f3f6fb">
   <meta name="description" content="Uchko'prik tumani kunlik ishchilar platformasi — 100% bepul">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -26,27 +26,27 @@
        DESIGN TOKENS
        ═══════════════════════════════════════ */
     :root {
-      --bg:        #07101d;
-      --bg-2:      #0c1626;
-      --bg-3:      #101d31;
-      --bg-4:      #16263d;
-      --line:      #1d3350;
-      --line-2:    #29456b;
-      --muted:     #7d95b5;
-      --text-3:    #95aac8;
-      --text-2:    #c5d7ee;
-      --text:      #edf6ff;
+      --bg:        #f3f6fb;
+      --bg-2:      #ffffff;
+      --bg-3:      #eef3f9;
+      --bg-4:      #e6edf7;
+      --line:      #d6e0ee;
+      --line-2:    #b9c9de;
+      --muted:     #6f7f95;
+      --text-3:    #63748c;
+      --text-2:    #425269;
+      --text:      #18263a;
       --white:     #FFFFFF;
 
-      --accent:    #35b9ff;
-      --accent-2:  #93e3ff;
-      --accent-dim:#0f3150;
-      --accent-fg: #04111d;
+      --accent:    #1f6feb;
+      --accent-2:  #5a8ff0;
+      --accent-dim:#dce9ff;
+      --accent-fg: #ffffff;
 
-      --red:       #FF4545;
-      --green:     #3DFF8F;
-      --blue:      #4B9EFF;
-      --orange:    #FF8C3A;
+      --red:       #d64545;
+      --green:     #1e8e5a;
+      --blue:      #1f6feb;
+      --orange:    #d9822b;
 
       --r-sm:      8px;
       --r-md:      12px;
@@ -62,9 +62,9 @@
       --safe-b:    env(safe-area-inset-bottom, 0px);
       --safe-t:    env(safe-area-inset-top, 0px);
 
-      --shadow-sm: 0 2px 8px rgba(0,0,0,0.4);
-      --shadow-md: 0 4px 20px rgba(0,0,0,0.6);
-      --shadow-lg: 0 8px 40px rgba(0,0,0,0.8);
+      --shadow-sm: 0 8px 24px rgba(15, 40, 80, 0.08);
+      --shadow-md: 0 12px 32px rgba(15, 40, 80, 0.10);
+      --shadow-lg: 0 18px 48px rgba(15, 40, 80, 0.12);
 
       --ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
       --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -1444,7 +1444,47 @@
     .cat-chip.active, .tab-chip.active, .filter-chip.active { background: linear-gradient(135deg,#35b9ff,#93e3ff) !important; color:#04111d !important; }
     .sidebar-item.active { background: rgba(53,185,255,0.18) !important; }
 
-</style>
+
+    [data-role-only]:not(.is-hidden) { display: flex !important; }
+    [data-role-only].sidebar-post-btn:not(.is-hidden),
+    [data-role-only].nav-fab-btn:not(.is-hidden) { display: inline-flex !important; }
+    body { background: linear-gradient(180deg, #f3f6fb 0%, #eef4fb 100%); color: var(--text); }
+    #desktop-sidebar { background: rgba(255,255,255,0.92); border-right: 1px solid var(--line); box-shadow: var(--shadow-sm); backdrop-filter: blur(18px); }
+    .screen, .home-header, .profile-hero, .post-topbar, .chats-topbar, .detail-topbar, .auth-topbar, .telegram-auth-card, .job-card, .stat-pill, .menu-item, .pstat, .section-refresh-btn, .home-search, .role-card, .sidebar-item, .sidebar-post-btn, .sidebar-user, .quick-filter-btn, .cat-chip, .detail-cta-bar, .detail-body, .post-form, .info-cell, .activity-card, .activity-inline-card, .contract-card, .settings-card, .support-faq-item { background: rgba(255,255,255,0.92) !important; border: 1px solid var(--line) !important; box-shadow: var(--shadow-sm) !important; color: var(--text) !important; }
+    .home-search-input, .text-field, .form-textarea, .phone-input-el, .otp-cell, .select-input, input, textarea, select { color: var(--text) !important; }
+    .sidebar-logo-text, .home-username, .auth-heading, .post-topbar-title, .chats-topbar-title, .profile-name, .detail-main-title, .job-card-title { color: #15253a !important; }
+    .sidebar-logo-sub, .home-greeting, .auth-subheading, .job-card-desc, .empty-desc, .helper-text, .field-help, .telegram-auth-desc, .telegram-auth-meta, .profile-phone, .section-more, .stat-pill-label, .pstat-label, .menu-item-arrow { color: var(--muted) !important; }
+    .si-icon, .menu-item-icon, .rc-icon, .ob-illustration, .telegram-auth-icon, .splash-icon { width: 32px; height: 32px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; background: #e9f1fb; color: #1f6feb; font-weight: 800; font-size: 13px; }
+    .job-card-btns .btn-call-sm, .mini-btn, .btn-icon, .section-refresh-btn, .sidebar-post-btn, .nav-fab-btn { min-height: 42px; padding: 0 14px; border-radius: 12px !important; }
+    .btn-primary, .btn-call-lg, .ob-next-btn, .telegram-login-btn { background: linear-gradient(180deg, #2d76f4 0%, #1f6feb 100%) !important; color: #fff !important; border: none !important; box-shadow: 0 12px 24px rgba(31,111,235,0.20) !important; }
+    .btn-outline, .btn-soft, .mini-btn, .btn-call-sm, .section-refresh-btn { background: #f7faff !important; color: #234 !important; }
+    .cats-scroller, .quick-filter-row, .home-stats, .profile-stats-row { gap: 12px !important; }
+    .cat-chip-icon, .empty-icon { display: none !important; }
+    .cat-chip { min-width: auto !important; padding: 12px 16px !important; }
+    .home-top-actions { gap: 10px !important; }
+    .user-stat-badge, .notif-badge, .meta-tag, .job-cat-tag, .job-time-tag, .note-chip, .profile-role-tag { background: #eef4ff !important; color: #245 !important; border: 1px solid #d7e4fb !important; }
+    .role-panel { display: grid; gap: 16px; padding: 18px; margin: 0 0 16px; border-radius: 18px; background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%); border: 1px solid var(--line); box-shadow: var(--shadow-sm); }
+    .role-panel-title { font-family: var(--font-head); font-size: 20px; font-weight: 800; color: #15253a; }
+    .role-panel-desc { color: var(--muted); }
+    .role-panel-metrics { display: flex; gap: 12px; flex-wrap: wrap; }
+    .role-panel-metric { min-width: 110px; padding: 12px 14px; border-radius: 14px; background: #f4f8ff; border: 1px solid #d8e5f8; display: grid; gap: 2px; }
+    .role-panel-metric strong { font-size: 20px; color: #16253a; }
+    .role-panel-metric span { font-size: 12px; color: var(--muted); }
+    .role-panel-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .home-header::before, .screen::before, .screen::after, .home-header::after { display: none !important; }
+    .profile-hero, .home-header, .post-topbar, .chats-topbar, .detail-topbar { backdrop-filter: blur(18px); }
+    .sidebar-item.active, .quick-filter-btn.active, .cat-chip.active, .role-card.selected { background: #edf4ff !important; border-color: #caddfb !important; color: #17406e !important; }
+    .sidebar-item, .menu-item, .quick-filter-btn, .cat-chip, .role-card { transition: all .2s ease; }
+    .sidebar-item:hover, .menu-item:hover, .quick-filter-btn:hover, .cat-chip:hover, .role-card:hover { transform: translateY(-1px); border-color: #bdd0ec !important; }
+    .note-chip { display: block !important; margin: 0 0 16px !important; border-radius: 14px !important; padding: 12px 14px !important; }
+    .home-notif-btn { width: auto !important; padding: 0 14px; border-radius: 12px; }
+    .section-actions { gap: 10px; }
+    .home-search-icon { color: #5b789c !important; }
+    .job-card-top, .job-card-footer, .job-card-meta, .detail-contact-row, .detail-action-row { gap: 10px !important; }
+    .bottom-nav, #bottom-nav { background: rgba(255,255,255,0.95) !important; border-top: 1px solid var(--line) !important; box-shadow: 0 -10px 25px rgba(15, 40, 80, 0.08) !important; }
+    @media (max-width: 900px) { #desktop-sidebar { display:none !important; } .screen { padding: 14px !important; } .role-panel-actions > * { width: 100%; } }
+
+  </style>
 </head>
 <body>
 
@@ -1459,20 +1499,20 @@
 
     <nav class="sidebar-nav">
       <div class="sidebar-item active" data-screen="home" onclick="Router.go('home')">
-        <span class="si-icon">🏠</span>
+        <span class="si-icon">A</span>
         <span class="si-label">Asosiy</span>
       </div>
       <div class="sidebar-item" data-screen="post" data-role-only="beruvchi" onclick="Router.go('post')">
-        <span class="si-icon">➕</span>
+        <span class="si-icon">Y</span>
         <span class="si-label">E'lon berish</span>
       </div>
       <div class="sidebar-item" data-screen="chats" onclick="Router.go('chats')">
-        <span class="si-icon">📋</span>
+        <span class="si-icon">F</span>
         <span class="si-label">Faollik</span>
         <span class="si-badge">2</span>
       </div>
       <div class="sidebar-item" data-screen="profile" onclick="Router.go('profile')">
-        <span class="si-icon">👤</span>
+        <span class="si-icon">P</span>
         <span class="si-label">Profil</span>
       </div>
     </nav>
@@ -1498,7 +1538,7 @@
       <div class="screen active" id="screen-splash">
         <div class="splash-bg"></div>
         <div class="splash-content">
-          <div class="splash-icon">⚡</div>
+          <div class="splash-icon">T</div>
           <div class="splash-title">Tezkor<span>Ish</span></div>
           <div class="splash-subtitle">Uchko'prik · Kunlik ishlar · 100% Bepul</div>
           <div class="splash-loader">
@@ -1515,17 +1555,17 @@
         <div class="ob-slides-wrap">
           <div class="ob-slides-track">
             <div class="ob-slide">
-              <div class="ob-illustration">🗺️</div>
+              <div class="ob-illustration">1</div>
               <div class="ob-slide-title">Hamma ish — bir joyda</div>
               <div class="ob-slide-desc">Uchko'prikdagi barcha kunlik ishlarni ko'ring va hoziroq toping</div>
             </div>
             <div class="ob-slide">
-              <div class="ob-illustration">📞</div>
+              <div class="ob-illustration">2</div>
               <div class="ob-slide-title">Tezkor bog'lanish</div>
               <div class="ob-slide-desc">Bir tugma bosing — va ish beruvchi bilan zudlik bilan aloqadasiz</div>
             </div>
             <div class="ob-slide">
-              <div class="ob-illustration">⭐</div>
+              <div class="ob-illustration">3</div>
               <div class="ob-slide-title">Ishonchli ishchilar</div>
               <div class="ob-slide-desc">Reytingli, tekshirilgan ishchilarni tanlang — hech qachon aldanmang</div>
             </div>
@@ -1545,13 +1585,13 @@
       <div class="screen auth-screen" id="screen-auth-telegram">
         <div class="auth-topbar">
           <button class="btn-back" onclick="Router.go('onboarding')">←</button>
-          <div class="auth-heading">Telegram orqali kirish 🛡️</div>
+          <div class="auth-heading">Telegram orqali kirish</div>
           <div class="auth-subheading">TezkorIsh mustaqil web/mobile web app sifatida ishlaydi. Telegram bu yerda faqat profil yaratish va xavfsiz kirish uchun ishlatiladi.</div>
         </div>
         <div class="auth-body">
           <div class="telegram-auth-card">
             <div class="telegram-auth-head">
-              <div class="telegram-auth-icon">📲</div>
+              <div class="telegram-auth-icon">T</div>
               <div>
                 <div class="telegram-auth-title">Asosiy kirish usuli</div>
                 <div class="telegram-auth-desc">Telegram akkauntingiz bilan kiring, telefon raqami esa faqat profil ma'lumoti sifatida saqlanadi.</div>
@@ -1577,7 +1617,7 @@
       <div class="screen auth-screen" id="screen-auth-phone">
         <div class="auth-topbar">
           <button class="btn-back" onclick="Router.go('auth-telegram')">←</button>
-          <div class="auth-heading">Lokal sinov kirishi 🧪</div>
+          <div class="auth-heading">Lokal sinov kirishi</div>
           <div class="auth-subheading">Bu ekran faqat demo/pilot ichki testlar uchun qoldirilgan. Production pilotda asosiy kirish — Telegram orqali.</div>
         </div>
         <div class="auth-body">
@@ -1610,7 +1650,7 @@
       <div class="screen auth-screen" id="screen-auth-otp">
         <div class="auth-topbar">
           <button class="btn-back" onclick="Router.go('auth-phone')">←</button>
-          <div class="auth-heading">Sinov kodi 🔐</div>
+          <div class="auth-heading">Sinov kodi</div>
           <div class="auth-subheading" id="otp-sub-text">Lokal test kodini kiriting</div>
         </div>
         <div class="auth-body">
@@ -1638,7 +1678,7 @@
       <div class="screen auth-screen" id="screen-auth-name">
         <div class="auth-topbar">
           <button class="btn-back" onclick="backFromNameScreen()">←</button>
-          <div class="auth-heading">Ma'lumotlar 👤</div>
+          <div class="auth-heading">Ma'lumotlar</div>
           <div class="auth-subheading" id="auth-name-subheading">Profil ma'lumotlarini yakunlang. Telefon raqam login uchun emas, bog'lanish va profil uchun saqlanadi.</div>
         </div>
         <div class="auth-body">
@@ -1673,19 +1713,19 @@
             <div class="field-label">Siz kim sifatida kirmoqdasiz?</div>
             <div class="role-grid">
               <div class="role-card" id="role-ishchi" onclick="selectRole('ishchi')">
-                <span class="rc-icon">👷</span>
+                <span class="rc-icon">I</span>
                 <div class="rc-name">Ishchi</div>
                 <div class="rc-desc">Ish qidiraman</div>
               </div>
               <div class="role-card" id="role-beruvchi" onclick="selectRole('beruvchi')">
-                <span class="rc-icon">🏪</span>
+                <span class="rc-icon">B</span>
                 <div class="rc-name">Ish beruvchi</div>
                 <div class="rc-desc">Ishchi topaman</div>
               </div>
             </div>
           </div>
           <button class="btn-primary" id="btn-name-continue" onclick="finishAuth()" disabled>
-            Boshlash 🚀
+            Boshlash
           </button>
         </div>
       </div>
@@ -1695,23 +1735,23 @@
         <div class="home-header">
           <div class="home-toprow">
             <div>
-              <div class="home-greeting">Salom 👋</div>
+              <div class="home-greeting">Xush kelibsiz</div>
               <div class="home-username-row">
                 <div class="home-username" id="home-username">Do'st</div>
-                <button type="button" class="mini-btn accept is-hidden" id="home-start-btn" onclick="toggleWorkerDuty()">▶ Start</button>
+                <button type="button" class="mini-btn accept is-hidden" id="home-start-btn" onclick="toggleWorkerDuty()">Ish qidirishni boshlash</button>
               </div>
             </div>
             <div class="home-top-actions">
-              <div class="user-stat-badge" title="Umumiy foydalanuvchilar">👥 <span id="user-count-total">0</span></div>
-              <div class="user-stat-badge online" title="Hozir online">🟢 <span id="user-count-online">0</span></div>
+              <div class="user-stat-badge" title="Umumiy foydalanuvchilar"><span id="user-count-total">0</span> foydalanuvchi</div>
+              <div class="user-stat-badge online" title="Hozir online"><span id="user-count-online">0</span> online</div>
               <button class="home-notif-btn" onclick="Router.go('chats')" aria-label="Bildirishnomalar">
-                🔔
+                Bildirishnoma
                 <span class="notif-badge"></span>
               </button>
             </div>
           </div>
           <div class="home-search">
-            <span class="home-search-icon">🔍</span>
+            <span class="home-search-icon">Qidiruv</span>
             <input id="home-search-input" class="home-search-input" type="search" placeholder="E'lon qidirish..." oninput="handleSearch(this.value)">
           </div>
         </div>
@@ -1743,7 +1783,7 @@
         <div class="section-head">
           <span class="section-title" id="home-jobs-title">So'nggi e'lonlar</span>
           <div class="section-actions">
-            <button class="section-refresh-btn" id="home-refresh-btn" onclick="refreshHomeJobs(true)">⟳ Reflesh</button>
+            <button class="section-refresh-btn" id="home-refresh-btn" onclick="refreshHomeJobs(true)">Yangilash</button>
             <button class="section-more" onclick="Toast.show('Barchasi ko\'rsatilmoqda')">Barchasi</button>
           </div>
         </div>
@@ -1755,7 +1795,7 @@
         <div class="detail-topbar">
           <button class="btn-icon" onclick="Router.back()" aria-label="Orqaga">←</button>
           <div class="detail-topbar-title" id="detail-topbar-title">E'lon</div>
-          <button class="btn-icon" onclick="Toast.show('Ulashish: Telegram, WhatsApp...')" aria-label="Ulashish">📤</button>
+          <button class="btn-icon" onclick="Toast.show('Ulashish: Telegram, WhatsApp...')" aria-label="Ulashish">Ulashish</button>
         </div>
         <div class="detail-body" id="detail-body"></div>
         <div class="detail-cta-bar" id="detail-cta"></div>
@@ -1764,7 +1804,7 @@
       <!-- ══ POST ══ -->
       <div class="screen" id="screen-post">
         <div class="post-topbar">
-          <div class="post-topbar-title">E'lon berish ➕</div>
+          <div class="post-topbar-title">E'lon berish</div>
           <div class="post-topbar-sub">~90 soniyada e'lon bering, 100% bepul</div>
         </div>
         <div class="post-form">
@@ -1815,7 +1855,7 @@
             <input class="text-field" id="post-map-link" type="url"
                    placeholder="https://www.google.com/maps?q=...">
             <div class="settings-action-row mt-12">
-              <button type="button" class="mini-btn accept" onclick="capturePostLocation()">📍 Joriy locationni olish</button>
+              <button type="button" class="mini-btn accept" onclick="capturePostLocation()">Joriy locationni olish</button>
             </div>
             <input type="hidden" id="post-lat">
             <input type="hidden" id="post-lng">
@@ -1831,7 +1871,7 @@
         </div>
         <div class="post-submit-row">
           <button type="button" class="btn-primary" onclick="submitPost()">
-            E'lonni joylashtirish 🚀
+            E'lonni joylashtirish
           </button>
         </div>
       </div>
@@ -1839,7 +1879,7 @@
       <!-- ══ CHATS ══ -->
       <div class="screen" id="screen-chats">
         <div class="chats-topbar">
-          <div class="chats-topbar-title" id="activity-title">Faollik 📋</div>
+          <div class="chats-topbar-title" id="activity-title">Faollik</div>
           <div class="chats-topbar-sub" id="activity-subtitle">Sizning e'lon va murojaatlaringiz shu yerda</div>
         </div>
         <div id="activity-top-zone"></div>
@@ -1854,7 +1894,7 @@
           </div>
           <div class="profile-name" id="profile-name-text">Ro'yxatdan o'ting</div>
           <div class="profile-phone" id="profile-phone-text">Telefon raqam kiritilmagan</div>
-          <div class="profile-role-tag" id="profile-role-text">👷 Ishchi</div>
+          <div class="profile-role-tag" id="profile-role-text">Ishchi</div>
           <div id="profile-duty-zone"></div>
         </div>
 
@@ -1868,22 +1908,22 @@
           <div class="psec-title">Mening</div>
           <div class="menu-row">
             <div class="menu-item" id="profile-primary-action" onclick="openPrimaryProfileAction()">
-              <span class="menu-item-icon">📋</span>
+              <span class="menu-item-icon">B</span>
               <span class="menu-item-text" id="profile-primary-action-text">Mening e'lonlarim</span>
               <span class="menu-item-badge" id="profile-primary-action-badge">0</span>
             </div>
             <div class="menu-item" onclick="Router.go('chats')">
-              <span class="menu-item-icon">📊</span>
+              <span class="menu-item-icon">T</span>
               <span class="menu-item-text">Ish tarixi</span>
               <span class="menu-item-arrow">›</span>
             </div>
             <div class="menu-item" id="saved-menu-item" onclick="openSavedScreen()">
-              <span class="menu-item-icon">🔖</span>
+              <span class="menu-item-icon">S</span>
               <span class="menu-item-text">Saqlanganlar</span>
               <span class="menu-item-badge" id="saved-count-badge">0</span>
             </div>
             <div class="menu-item" onclick="openContractsScreen()">
-              <span class="menu-item-icon">🗂️</span>
+              <span class="menu-item-icon">A</span>
               <span class="menu-item-text">Shartnomalar arxivi</span>
               <span class="menu-item-arrow">›</span>
             </div>
@@ -1894,17 +1934,17 @@
           <div class="psec-title">Sozlamalar</div>
           <div class="menu-row">
             <div class="menu-item" onclick="openProfileEditor()">
-              <span class="menu-item-icon">✏️</span>
+              <span class="menu-item-icon">T</span>
               <span class="menu-item-text">Profilni tahrirlash</span>
               <span class="menu-item-arrow">›</span>
             </div>
             <div class="menu-item" onclick="openSettingsScreen()">
-              <span class="menu-item-icon">🎨</span>
+              <span class="menu-item-icon">S</span>
               <span class="menu-item-text">Sozlamalar va theme</span>
               <span class="menu-item-arrow">›</span>
             </div>
             <div class="menu-item is-hidden" id="admin-menu-item" onclick="openAdminScreen()">
-              <span class="menu-item-icon">🛡️</span>
+              <span class="menu-item-icon">M</span>
               <span class="menu-item-text">Lokal moderatsiya paneli</span>
               <span class="menu-item-badge" id="report-count-badge">0</span>
             </div>
@@ -1914,7 +1954,7 @@
               <span class="menu-item-arrow">›</span>
             </div>
             <div class="menu-item" onclick="logout()">
-              <span class="menu-item-icon">🚪</span>
+              <span class="menu-item-icon">C</span>
               <span class="menu-item-text">Chiqish</span>
               <span class="menu-item-arrow">›</span>
             </div>
@@ -1988,7 +2028,7 @@
 
             <div class="support-actions-grid">
               <a class="support-link-card support-telegram" href="https://t.me/SysOneTeam" target="_blank" rel="noopener noreferrer">
-                <span class="support-link-icon">💬</span>
+                <span class="support-link-icon">T</span>
                 <span>
                   <strong>Telegram support</strong>
                   <small>Texnik yordam va tezkor aloqa</small>
@@ -2053,7 +2093,7 @@
       <div class="screen" id="screen-contracts">
         <div class="chats-topbar about-topbar">
           <button class="btn-back in-topbar" onclick="Router.back()">←</button>
-          <div class="chats-topbar-title">Shartnomalar arxivi 🗂️</div>
+          <div class="chats-topbar-title">Shartnomalar arxivi</div>
           <div class="chats-topbar-sub">Ishchi va ish beruvchi o'rtasidagi lokal arxiv</div>
         </div>
         <div id="contracts-list"></div>
@@ -2063,7 +2103,7 @@
       <div class="screen" id="screen-saved">
         <div class="chats-topbar">
           <button class="btn-back in-topbar" onclick="Router.back()">←</button>
-          <div class="chats-topbar-title">Saqlangan e'lonlar 🔖</div>
+          <div class="chats-topbar-title">Saqlangan e'lonlar</div>
           <div class="chats-topbar-sub" id="saved-subtitle">Keyinroq ko'rish uchun saqlanganlar</div>
         </div>
         <div id="saved-list"></div>
@@ -2073,7 +2113,7 @@
       <div class="screen" id="screen-admin">
         <div class="chats-topbar">
           <button class="btn-back in-topbar" onclick="Router.back()">←</button>
-          <div class="chats-topbar-title">Lokal moderatsiya paneli 🛡️</div>
+          <div class="chats-topbar-title">Lokal moderatsiya paneli</div>
           <div class="chats-topbar-sub">Moderatsiya, hisobotlar va umumiy holat</div>
         </div>
         <div id="admin-list"></div>
@@ -2085,20 +2125,20 @@
     <nav id="bottom-nav" class="hidden">
       <div class="nav-item active" data-screen="home" onclick="Router.go('home')">
         <div class="nav-active-dot"></div>
-        <div class="nav-icon">🏠</div>
+        <div class="nav-icon">A</div>
         <div class="nav-label">Asosiy</div>
       </div>
       <div class="nav-item" data-screen="chats" onclick="Router.go('chats')">
         <div class="nav-active-dot"></div>
-        <div class="nav-icon">💬</div>
+        <div class="nav-icon">F</div>
         <div class="nav-label">Faollik</div>
       </div>
       <div class="nav-fab">
-        <button class="nav-fab-btn" id="post-fab-btn" data-role-only="beruvchi" onclick="Router.go('post')" aria-label="E'lon berish">➕</button>
+        <button class="nav-fab-btn" id="post-fab-btn" data-role-only="beruvchi" onclick="Router.go('post')" aria-label="E'lon berish">Yangi</button>
       </div>
       <div class="nav-item" data-screen="profile" onclick="Router.go('profile')">
         <div class="nav-active-dot"></div>
-        <div class="nav-icon">👤</div>
+        <div class="nav-icon">P</div>
         <div class="nav-label">Profil</div>
       </div>
     </nav>
@@ -2132,7 +2172,7 @@
 <div class="modal-overlay" id="success-modal">
   <div class="modal-sheet">
     <div class="modal-handle"></div>
-    <div class="modal-icon-big">🎉</div>
+    <div class="modal-icon-big">OK</div>
     <div class="modal-title">E'lon joylashtirildi!</div>
     <div class="modal-desc" id="success-modal-desc">E'loningiz aktiv bo'ldi.</div>
     <button class="btn-primary" onclick="closeSuccessModal()">Asosiy sahifaga qaytish →</button>
@@ -2150,7 +2190,7 @@
     <button class="pwa-close" onclick="PWA.dismiss()">✕</button>
   </div>
   <button class="pwa-install-btn" onclick="PWA.install()">
-    📲 Ekranga qo'shish
+    Ekranga qo'shish
   </button>
 </div>
 

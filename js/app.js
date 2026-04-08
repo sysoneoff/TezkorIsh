@@ -447,6 +447,7 @@ function duplicateCurrentJob() {
 function toggleHomeMatchedOnly() {
   AppState.homeFilter.matchedOnly = !AppState.homeFilter.matchedOnly;
   renderHomeQuickFilters();
+  renderHomeRolePanel();
   renderJobs(getFilteredJobs());
 }
 
@@ -477,9 +478,9 @@ function renderHomeQuickFilters() {
   }
   const settings = getAppSettings();
   wrap.innerHTML = `
-    <button class="quick-filter-btn ${AppState.homeFilter.matchedOnly ? 'active' : ''}" onclick="toggleHomeMatchedOnly()">🎯 Menga mos</button>
-    <button class="quick-filter-btn ${AppState.homeFilter.priceOrder === 'desc' ? 'active' : ''}" onclick="setHomePriceOrder('desc')">💰 Narx yuqori</button>
-    <button class="quick-filter-btn ${AppState.homeFilter.nearbyOnly ? 'active' : ''}" onclick="toggleHomeNearbyOnly()">📍 Yaqin joylar</button>
+    <button class="quick-filter-btn ${AppState.homeFilter.matchedOnly ? 'active' : ''}" onclick="toggleHomeMatchedOnly()">Menga mos</button>
+    <button class="quick-filter-btn ${AppState.homeFilter.priceOrder === 'desc' ? 'active' : ''}" onclick="setHomePriceOrder('desc')">Narx yuqori</button>
+    <button class="quick-filter-btn ${AppState.homeFilter.nearbyOnly ? 'active' : ''}" onclick="toggleHomeNearbyOnly()">Yaqin joylar</button>
     <span class="quick-filter-note">Mos toifalar: ${settings.preferredCats?.length ? settings.preferredCats.map(getCatName).join(', ') : 'tanlanmagan'}</span>
   `;
 }
@@ -546,8 +547,8 @@ function renderSettingsScreen() {
       <div class="settings-location-box">
         <div><strong>Joriy joylashuv:</strong> ${settings.workerAddress ? escapeHtml(settings.workerAddress) : (settings.workerLocation ? `${settings.workerLocation.lat}, ${settings.workerLocation.lng}` : 'saqlanmagan')}</div>
         <div class="settings-action-row">
-          <button class="mini-btn accept" onclick="detectWorkerLocation()">📍 Joylashuvni olish</button>
-          <button class="mini-btn" onclick="clearWorkerLocation()">🧹 Tozalash</button>
+          <button class="mini-btn accept" onclick="detectWorkerLocation()">Joylashuvni olish</button>
+          <button class="mini-btn" onclick="clearWorkerLocation()">Tozalash</button>
         </div>
         <label class="field-label mt-12">Yaqin joylar radiusi (km)</label>
         <input class="text-field" type="number" min="1" max="100" value="${settings.nearbyRadiusKm || 10}" onchange="saveNearbyRadius(this.value)">
@@ -575,10 +576,10 @@ function renderContracts() {
       </div>
       <div class="activity-meta">${escapeHtml(contract.location)} · ${contract.schedule ? escapeHtml(contract.schedule) : 'Jadval kiritilmagan'}</div>
       <div class="activity-actions">
-        ${contract.mapLink ? `<button class="mini-btn" onclick="window.open('${escapeJsString(contract.mapLink)}','_blank','noopener')">🗺 Xarita</button>` : ''}
-        <button class="mini-btn" onclick="copyPhone('${escapeJsString(contract.employerPhone || contract.workerPhone || '')}')">📋 Telefon</button>
+        ${contract.mapLink ? `<button class="mini-btn" onclick="window.open('${escapeJsString(contract.mapLink)}','_blank','noopener')">Xarita</button>` : ''}
+        <button class="mini-btn" onclick="copyPhone('${escapeJsString(contract.employerPhone || contract.workerPhone || '')}')">Telefon</button>
       </div>
-    </div>`).join('')}</div>` : `<div class="empty-state"><div class="empty-icon">🗂</div><div class="empty-title">Shartnomalar hali yo‘q</div><div class="empty-desc">Ishchi qabul qilinganda shartnoma arxivi shu yerda saqlanadi.</div></div>`;
+    </div>`).join('')}</div>` : `<div class="empty-state"><div class="empty-icon"></div><div class="empty-title">Shartnomalar hali yo‘q</div><div class="empty-desc">Ishchi qabul qilinganda shartnoma arxivi shu yerda saqlanadi.</div></div>`;
 }
 
 function openReviewPrompt(contractId, toUserId) {
@@ -613,7 +614,7 @@ function getCatName(id) {
 }
 
 function getCatIcon(id) {
-  return CATEGORIES.find(c => c.id === id)?.icon || '⚙️';
+  return '';
 }
 
 function escapeHtml(str = '') {
@@ -841,7 +842,46 @@ function syncAuthNameScreen() {
 
   document.getElementById('role-ishchi').classList.toggle('selected', AppState.authDraft.role === 'ishchi');
   document.getElementById('role-beruvchi').classList.toggle('selected', AppState.authDraft.role === 'beruvchi');
+  applyAuthPrefillForRole(AppState.authDraft.role);
   checkName();
+}
+
+function getExistingTelegramProfiles() {
+  const direct = Array.isArray(AppState.authDraft?.existingProfiles) ? AppState.authDraft.existingProfiles : [];
+  if (direct.length) return direct;
+  const telegramUserId = String(AppState.authDraft?.telegramUserId || '');
+  if (!telegramUserId || typeof Store?.getUsersByTelegramId !== 'function') return [];
+  return Store.getUsersByTelegramId(telegramUserId);
+}
+
+function applyAuthPrefillForRole(role, force = false) {
+  const nameInput = document.getElementById('name-input');
+  const phoneInput = document.getElementById('profile-phone-input');
+  const targetRole = role || AppState.authDraft?.role || 'ishchi';
+  const existing = getExistingTelegramProfiles().find(item => String(item.role || '') === String(targetRole));
+  if (!nameInput || !phoneInput) return existing || null;
+  const shouldFill = force || !nameInput.value.trim() || !phoneInput.value.trim() || AppState.authDraft?.prefilledRole !== targetRole;
+  if (existing && shouldFill) {
+    nameInput.value = existing.name || '';
+    phoneInput.value = digitsOnly(existing.phoneDigits || existing.phone || '');
+    AppState.authDraft = {
+      ...(AppState.authDraft || {}),
+      name: nameInput.value.trim(),
+      phoneDigits: digitsOnly(phoneInput.value),
+      prefilledRole: targetRole,
+    };
+  }
+  if (!existing && force) {
+    nameInput.value = AppState.authDraft?.telegramSuggestedName || AppState.authDraft?.name || '';
+    phoneInput.value = '';
+    AppState.authDraft = {
+      ...(AppState.authDraft || {}),
+      name: nameInput.value.trim(),
+      phoneDigits: '',
+      prefilledRole: targetRole,
+    };
+  }
+  return existing || null;
 }
 
 function backFromNameScreen() {
@@ -1007,6 +1047,8 @@ function beginTelegramAuthProfileFlow(payload) {
     telegramUserId: String(payload.telegramUserId || ''),
     telegramUsername: sanitizeTelegramHandle(payload.username || ''),
     telegramPhotoUrl: payload.photoUrl || '',
+    existingProfiles: Array.isArray(payload.existingProfiles) ? payload.existingProfiles : [],
+    telegramSuggestedName: payload.fullName || AppState.authDraft?.name || '',
     name: payload.fullName || AppState.authDraft?.name || '',
     otpVerified: true,
   };
@@ -1017,6 +1059,7 @@ function beginTelegramAuthProfileFlow(payload) {
     preview.src = AppState.authDraft.telegramPhotoUrl;
   }
   syncAuthNameScreen();
+  applyAuthPrefillForRole(AppState.authDraft?.role || 'ishchi', true);
   Router.go('auth-name', true);
   Toast.show(payload.verified ? 'Telegram tasdiqlandi. Profilni yakunlang.' : 'Telegram ma’lumoti olindi. Profilni yakunlang.');
   return true;
@@ -1064,6 +1107,7 @@ async function bootstrapServerAuthSession() {
         username: state.pendingTelegram.username || '',
         photoUrl: state.pendingTelegram.photoUrl || '',
         fullName,
+        existingProfiles: Array.isArray(state.pendingTelegram.existingProfiles) ? state.pendingTelegram.existingProfiles : [],
         verified: true,
       });
       clearTelegramParamsFromUrl();
@@ -1152,6 +1196,7 @@ function selectRole(role) {
   AppState.authDraft.role = role;
   document.getElementById('role-ishchi').classList.toggle('selected', role === 'ishchi');
   document.getElementById('role-beruvchi').classList.toggle('selected', role === 'beruvchi');
+  applyAuthPrefillForRole(role, true);
   checkName();
 }
 
@@ -1206,9 +1251,9 @@ async function finishAuth() {
     }
   }
 
-  const existingByTelegram = isTelegram && typeof Store?.findUserByTelegramId === 'function'
-    ? Store.findUserByTelegramId(AppState.authDraft.telegramUserId)
-    : null;
+  const existingByTelegram = isTelegram && typeof Store?.findUserByTelegramIdRole === 'function'
+    ? Store.findUserByTelegramIdRole(AppState.authDraft.telegramUserId, role)
+    : (isTelegram && typeof Store?.findUserByTelegramId === 'function' ? Store.findUserByTelegramId(AppState.authDraft.telegramUserId) : null);
   const existing = existingByTelegram || null;
 
   const user = existing ? {
@@ -1269,8 +1314,8 @@ function hydrateUserUI() {
   document.getElementById('profile-phone-text').textContent = user.phone;
   renderAvatar('profile-avatar-letter', user);
   document.getElementById('sidebar-user-name').textContent = fullName;
-  document.getElementById('sidebar-user-role').textContent = user.role === 'ishchi' ? '👷 Ishchi' : '🏪 Ish beruvchi';
-  document.getElementById('profile-role-text').textContent = user.role === 'ishchi' ? '👷 Ishchi' : '🏪 Ish beruvchi';
+  document.getElementById('sidebar-user-role').textContent = user.role === 'ishchi' ? 'Ishchi' : 'Ish beruvchi';
+  document.getElementById('profile-role-text').textContent = user.role === 'ishchi' ? 'Ishchi' : 'Ish beruvchi';
   renderAvatar('sidebar-avatar-letter', user);
   document.querySelector('.sidebar-user')?.classList.remove('guest');
   document.getElementById('desktop-sidebar')?.classList.remove('hidden');
@@ -1300,12 +1345,12 @@ function updateRoleVisibility() {
 
   document.getElementById('profile-primary-action-text').textContent = isEmployer ? "Mening e'lonlarim" : 'Mening murojaatlarim';
   document.getElementById('profile-jobs-label').textContent = isEmployer ? "E'lonlar" : 'Murojaatlar';
-  document.getElementById('activity-title').textContent = isEmployer ? 'Nomzodlar va e’lonlar 📋' : 'Mening murojaatlarim 📋';
+  document.getElementById('activity-title').textContent = isEmployer ? "E'lonlar va nomzodlar" : 'Mening murojaatlarim';
   const homeStartBtn = document.getElementById('home-start-btn');
   if (homeStartBtn) {
     if (!isEmployer) {
       homeStartBtn.classList.remove('is-hidden');
-      homeStartBtn.textContent = AppState.user?.availability?.onDuty ? '🛑 Stop' : '▶ Start';
+      homeStartBtn.textContent = AppState.user?.availability?.onDuty ? "Ishni to'xtatish" : 'Ish qidirishni boshlash';
       homeStartBtn.classList.toggle('danger', !!AppState.user?.availability?.onDuty);
     } else {
       homeStartBtn.classList.add('is-hidden');
@@ -1318,8 +1363,8 @@ function updateRoleVisibility() {
   note.id = 'home-role-note';
   note.className = 'note-chip';
   note.textContent = isEmployer
-    ? "Ish beruvchi roli: bosh sahifada faqat o'zingiz joylagan faol va arxiv e'lonlar ko'rinadi."
-    : 'Ishchi roli: barcha ochiq vakantlar ko‘rinadi. Start rejimi yoqilsa yangi vakantlar haqida ogohlantirish keladi.';
+    ? "Ish beruvchi uchun bosh sahifada faqat siz joylagan e'lonlar ko'rinadi. Yangi e'lon qo'shish uchun chap menyudagi yoki pastdagi E'lon berish bo'limidan foydalaning."
+    : 'Ishchi uchun barcha ochiq vakantlar ko‘rinadi. Ish qidirish rejimi yoqilganda yangi vakantlar haqida bildirishnoma keladi.';
   const homeScreen = document.getElementById('screen-home');
   const firstSectionHead = document.querySelector('#screen-home .section-head');
   if (homeScreen) {
@@ -1402,14 +1447,14 @@ function syncWorkerDutyUI() {
           <div class="duty-card-title">${onDuty ? 'Siz hozir ish qidirish rejimidasiz' : 'Ishga chiqish rejimi o‘chiq'}</div>
           <div class="duty-card-sub">${onDuty ? 'Yangi vakantlar paydo bo‘lsa belgicha va lokal xabar ko‘rsatiladi. localhost/https rejimi tavsiya etiladi.' : 'Start tugmasi yoqilganda tizim yangi vakantlarni kuzatadi. file:// rejimida xabarlar cheklangan bo‘lishi mumkin.'}</div>
         </div>
-        <div class="duty-status-pill ${onDuty ? 'live' : ''}">${onDuty ? '🟢 Faol' : '⚪ Kutmoqda'}</div>
+        <div class="duty-status-pill ${onDuty ? 'live' : ''}">${onDuty ? 'Faol' : 'Kutilmoqda'}</div>
       </div>
       <div class="duty-actions">
-        <button class="btn-soft ${onDuty ? 'danger' : ''}" onclick="toggleWorkerDuty()">${onDuty ? '🛑 Ishni to‘xtatish' : '▶ Ishga chiqdim'}</button>
+        <button class="btn-soft ${onDuty ? 'danger' : ''}" onclick="toggleWorkerDuty()">${onDuty ? 'Ishni to‘xtatish' : 'Ishga chiqdim'}</button>
       </div>
       <div class="mini-note">
-        <span class="meta-tag">🔥 ${Store.getPublicFeedJobs().length} ta ochiq vakant</span>
-        <span class="meta-tag">🔔 ${newCount} ta yangi</span>
+        <span class="meta-tag">${Store.getPublicFeedJobs().length} ta ochiq vakant</span>
+        <span class="meta-tag">${newCount} ta yangi</span>
       </div>
     </div>`;
 
@@ -1557,6 +1602,34 @@ function getFilteredJobs() {
   return jobs;
 }
 
+
+function renderHomeRolePanel() {
+  const zone = document.getElementById('home-duty-zone');
+  if (!zone || !AppState.user) return;
+  if (AppState.user.role === 'beruvchi') {
+    const myJobs = typeof Store?.getMyJobs === 'function' ? Store.getMyJobs(AppState.user.id) : [];
+    const activeCount = myJobs.filter(job => ['active', 'assigned', 'in_progress'].includes(job.status)).length;
+    const archivedCount = myJobs.filter(job => ['closed', 'expired'].includes(job.status)).length;
+    zone.innerHTML = `
+      <div class="role-panel role-panel-employer">
+        <div>
+          <div class="role-panel-title">Ish beruvchi boshqaruvi</div>
+          <div class="role-panel-desc">Yangi e'lon joylashtirish, faol e'lonlarni kuzatish va nomzodlarni boshqarish shu bo'limdan amalga oshiriladi.</div>
+        </div>
+        <div class="role-panel-metrics">
+          <div class="role-panel-metric"><strong>${activeCount}</strong><span>Faol</span></div>
+          <div class="role-panel-metric"><strong>${archivedCount}</strong><span>Arxiv</span></div>
+        </div>
+        <div class="role-panel-actions">
+          <button class="btn-primary" type="button" onclick="Router.go('post')">E'lon berish</button>
+          <button class="btn-outline" type="button" onclick="Router.go('chats')">Nomzodlarni ko'rish</button>
+        </div>
+      </div>`;
+    return;
+  }
+  syncWorkerDutyUI();
+}
+
 function renderCategories() {
   const wrap = document.getElementById('cats-scroll');
   wrap.innerHTML = CATEGORIES.map(c => `
@@ -1589,7 +1662,7 @@ function renderJobs(jobs) {
     AppState.homeVisibleJobIds = [];
     feed.innerHTML = `
       <div class="empty-state">
-        <div class="empty-icon">🔍</div>
+        <div class="empty-icon"></div>
         <div class="empty-title">${isEmployerView ? "Sizda hali e'lon yo'q" : "Mos ochiq e'lon topilmadi"}</div>
         <div class="empty-desc">${isEmployerView ? "Faqat o'zingiz joylagan faol va arxiv e'lonlar shu yerda ko'rinadi" : "Eski, yopilgan yoki ishlatilgan e'lonlar feed'da ko‘rsatilmaydi"}</div>
       </div>`;
@@ -1608,32 +1681,32 @@ function renderJobs(jobs) {
     return `
       <div class="job-card" style="animation-delay:${i * 0.05}s" onclick="openDetail(${j.id})">
         <div class="job-card-top">
-          <span class="job-cat-tag">${getCatIcon(j.cat)} ${getCatName(j.cat)}</span>
-          <span class="job-time-tag">⏱ ${formatRelative(j.createdAt)} oldin</span>
+          <span class="job-cat-tag">${getCatName(j.cat)}</span>
+          <span class="job-time-tag">${formatRelative(j.createdAt)} oldin</span>
         </div>
         <div class="job-card-title">${escapeHtml(j.title)}</div>
         <div class="job-card-desc">${escapeHtml(j.desc)}</div>
         <div class="job-card-footer">
           <div>
             <div class="job-price">${formatMoney(j.price)} so'm</div>
-            <div class="job-location">📍 ${escapeHtml(j.location)}</div>
-            <div class="job-card-phone">📞 +998 ${escapeHtml(j.phone || '')}</div>
-            ${distance ? `<div class="job-card-phone">📍 ${distance} km</div>` : ''}
+            <div class="job-location">${escapeHtml(j.location)}</div>
+            <div class="job-card-phone">+998 ${escapeHtml(j.phone || '')}</div>
+            ${distance ? `<div class="job-card-phone">${distance} km</div>` : ''}
           </div>
           <div class="job-card-btns">
-            <button class="btn-call-sm" onclick="event.stopPropagation(); callNumber('${escapeJsString(j.phone || '')}', '${escapeJsString(j.poster)}')">📞</button>
-            <button class="btn-call-sm" onclick="event.stopPropagation(); openWhatsApp('${escapeJsString(j.phone || '')}', '${escapeJsString(j.poster)}')">💬</button>
-            ${j.mapLink ? `<button class="btn-call-sm" onclick="event.stopPropagation(); window.open('${escapeJsString(j.mapLink)}','_blank','noopener')">🗺</button>` : ''}
+            <button class="btn-call-sm" onclick="event.stopPropagation(); callNumber('${escapeJsString(j.phone || '')}', '${escapeJsString(j.poster)}')">Qo'ng'iroq</button>
+            <button class="btn-call-sm" onclick="event.stopPropagation(); openWhatsApp('${escapeJsString(j.phone || '')}', '${escapeJsString(j.poster)}')">WhatsApp</button>
+            ${j.mapLink ? `<button class="btn-call-sm" onclick="event.stopPropagation(); window.open('${escapeJsString(j.mapLink)}','_blank','noopener')">Xarita</button>` : ''}
           </div>
         </div>
         <div class="job-card-meta">
-          <span class="meta-tag">👁 ${j.views || 0} ko'rildi</span>
-          <span class="meta-tag">⏰ ${formatHoursLeft(j.expiresAt)}</span>
-          ${fresh ? `<span class="meta-tag">🆕 Yangi</span>` : ''}
+          <span class="meta-tag">${j.views || 0} ko'rildi</span>
+          <span class="meta-tag">${formatHoursLeft(j.expiresAt)}</span>
+          ${fresh ? `<span class="meta-tag">Yangi</span>` : ''}
           ${AppState.user?.role === 'beruvchi' && AppState.user?.id === j.ownerId
-            ? `<span class="meta-tag">🙋 ${applicantCount} nomzod</span>`
-            : mine ? `<span class="meta-tag">📌 ${statusLabel(mine.status)}</span>` : `<span class="meta-tag">⭐ ${Number(j.posterRating || 0) ? Number(j.posterRating).toFixed(1) : '—'}</span>`}
-          ${saved ? `<span class="meta-tag">🔖 Saqlangan</span>` : ''}
+            ? `<span class="meta-tag">${applicantCount} nomzod</span>`
+            : mine ? `<span class="meta-tag">${statusLabel(mine.status)}</span>` : `<span class="meta-tag">${Number(j.posterRating || 0) ? Number(j.posterRating).toFixed(1) : '—'}</span>`}
+          ${saved ? `<span class="meta-tag">Saqlangan</span>` : ''}
         </div>
       </div>`;
   }).join('');
@@ -1741,7 +1814,7 @@ function openDetail(jobId) {
     <div class="tags-row">
       <span class="tag tag-cat">${getCatIcon(j.cat)} ${getCatName(j.cat)}</span>
       <span class="tag tag-time">⏱ ${formatRelative(j.createdAt)} oldin</span>
-      <span class="tag tag-views">👁 ${j.views || 0}</span>
+      <span class="tag tag-views">${j.views || 0}</span>
       <span class="tag tag-active">✅ ${statusLabel(j.status)}</span>
     </div>
 
@@ -1751,15 +1824,15 @@ function openDetail(jobId) {
         <div class="ph-amount">${formatMoney(j.price)}</div>
         <div class="ph-type">so'm / ${j.priceType}</div>
       </div>
-      <div class="price-hero-right">💰</div>
+      <div class="price-hero-right">So'm</div>
     </div>
 
     <div class="detail-action-row">
-      ${AppState.user?.role === 'ishchi' ? `<button class="mini-btn" onclick="toggleSaveCurrentJob()">${isSaved ? '💾 Saqlandi' : '🔖 Saqlash'}</button>` : ''}
-      ${!isOwner && j.status === 'active' ? `<button class="mini-btn reject" onclick="reportCurrentJob()">🚩 Xabar berish</button>` : ''}
+      ${AppState.user?.role === 'ishchi' ? `<button class="mini-btn" onclick="toggleSaveCurrentJob()">${isSaved ? 'Saqlandi' : 'Saqlash'}</button>` : ''}
+      ${!isOwner && j.status === 'active' ? `<button class="mini-btn reject" onclick="reportCurrentJob()">Xabar berish</button>` : ''}
       ${isOwner && j.status === 'active' ? `<button class="mini-btn" onclick="editCurrentJob()">✏️ Tahrirlash</button>` : ''}
-      ${isOwner && j.status === 'active' ? `<button class="mini-btn" onclick="duplicateCurrentJob()">📄 Nusxa</button>` : ''}
-      <button class="mini-btn" onclick="copyJobLink()">📤 Ulashish</button>
+      ${isOwner && j.status === 'active' ? `<button class="mini-btn" onclick="duplicateCurrentJob()">Nusxa</button>` : ''}
+      <button class="mini-btn" onclick="copyJobLink()">Ulashish</button>
     </div>
 
     <div class="section-label">Ish tavsifi</div>
@@ -1767,19 +1840,19 @@ function openDetail(jobId) {
 
     <div class="section-label">Ma'lumotlar</div>
     <div class="info-grid">
-      <div class="info-cell"><div class="info-cell-label">📍 Manzil</div><div class="info-cell-value">${escapeHtml(j.location)}</div></div>
-      <div class="info-cell"><div class="info-cell-label">📞 Telefon</div><div class="info-cell-value">+998 ${escapeHtml(j.phone || '')}</div></div>
-      <div class="info-cell"><div class="info-cell-label">💬 Telegram</div><div class="info-cell-value">${escapeHtml(j.telegram || 'Kiritilmagan')}</div></div>
+      <div class="info-cell"><div class="info-cell-label">Manzil</div><div class="info-cell-value">${escapeHtml(j.location)}</div></div>
+      <div class="info-cell"><div class="info-cell-label">Telefon</div><div class="info-cell-value">+998 ${escapeHtml(j.phone || '')}</div></div>
+      <div class="info-cell"><div class="info-cell-label">Telegram</div><div class="info-cell-value">${escapeHtml(j.telegram || 'Kiritilmagan')}</div></div>
       <div class="info-cell"><div class="info-cell-label">⏰ Muddat</div><div class="info-cell-value">${formatHoursLeft(j.expiresAt)}</div></div>
-      <div class="info-cell"><div class="info-cell-label">👁 Ko'rishlar</div><div class="info-cell-value">${j.views || 0} marta</div></div>
-      <div class="info-cell"><div class="info-cell-label">🙋 Murojaatlar</div><div class="info-cell-value">${applicantCount} ta</div></div>
-      <div class="info-cell"><div class="info-cell-label">🕒 Ish vaqti</div><div class="info-cell-value">${escapeHtml(j.schedule || 'Kelishiladi')}</div></div>
+      <div class="info-cell"><div class="info-cell-label">Ko'rishlar</div><div class="info-cell-value">${j.views || 0} marta</div></div>
+      <div class="info-cell"><div class="info-cell-label">Murojaatlar</div><div class="info-cell-value">${applicantCount} ta</div></div>
+      <div class="info-cell"><div class="info-cell-label">Ish vaqti</div><div class="info-cell-value">${escapeHtml(j.schedule || 'Kelishiladi')}</div></div>
     </div>
     <div class="detail-contact-row">
-      <button class="mini-btn" onclick="copyPhone('${escapeJsString(j.phone || '')}')">📋 Telefonni nusxalash</button>
-      <button class="mini-btn" onclick="openWhatsApp('${escapeJsString(j.phone || '')}', '${escapeJsString(j.poster)}')">💬 WhatsApp</button>
-      ${j.telegram ? `<button class="mini-btn" onclick="openTelegramContact('${escapeJsString(j.telegram)}')">🛩 Telegram</button>` : ''}
-      ${j.mapLink ? `<button class="mini-btn" onclick="openMapForCurrentJob()">🗺 Xarita</button>` : ''}
+      <button class="mini-btn" onclick="copyPhone('${escapeJsString(j.phone || '')}')">Telefonni nusxalash</button>
+      <button class="mini-btn" onclick="openWhatsApp('${escapeJsString(j.phone || '')}', '${escapeJsString(j.poster)}')">WhatsApp</button>
+      ${j.telegram ? `<button class="mini-btn" onclick="openTelegramContact('${escapeJsString(j.telegram)}')">Telegram</button>` : ''}
+      ${j.mapLink ? `<button class="mini-btn" onclick="openMapForCurrentJob()">Xarita</button>` : ''}
     </div>
     <div class="detail-inline-note">Aloqa uchun qo‘ng‘iroq, WhatsApp, Telegram yoki xarita tugmalaridan foydalanishingiz mumkin.</div>
 
@@ -1823,16 +1896,16 @@ function openDetail(jobId) {
 function renderEmployerDetailActions(job, applicantCount) {
   if (job.status === 'active') {
     return `
-      <button class="btn-outline" onclick="Router.go('chats')">🙋 ${applicantCount} nomzod</button>
+      <button class="btn-outline" onclick="Router.go('chats')">${applicantCount} nomzod</button>
       <button class="btn-call-lg" onclick="closeCurrentJob()">✅ E'lonni yopish</button>`;
   }
   if (['assigned', 'in_progress'].includes(job.status)) {
     return `
-      <button class="btn-outline" onclick="Router.go('chats')">🛠 Jarayon</button>
-      <button class="btn-call-lg" onclick="completeCurrentJob()">🏁 Bajarildi</button>`;
+      <button class="btn-outline" onclick="Router.go('chats')">Jarayon</button>
+      <button class="btn-call-lg" onclick="completeCurrentJob()">Bajarildi</button>`;
   }
   return `
-    <button class="btn-outline" onclick="Router.go('chats')">📋 Faollik</button>
+    <button class="btn-outline" onclick="Router.go('chats')">Faollik</button>
     <button class="btn-call-lg" onclick="Toast.show('Bu e’lon yakunlangan.')">✅ Yakunlangan</button>`;
 }
 
@@ -1845,30 +1918,30 @@ function setEmployerHomeStatus(status) {
 function renderViewerDetailActions(job, myApplication) {
   const isAdminViewer = typeof Store?.isAdminUser === 'function' ? Store.isAdminUser(AppState.user) : false;
   if (AppState.user?.role === 'ishchi') {
-    let primaryAction = `<button class="btn-outline" onclick="expressInterest()" ${job.status !== 'active' ? 'disabled' : ''}>🙋 Qiziqdim</button>`;
+    let primaryAction = `<button class="btn-outline" onclick="expressInterest()" ${job.status !== 'active' ? 'disabled' : ''}>Qiziqdim</button>`;
     if (myApplication?.status === 'pending') {
       primaryAction = `<button class="btn-outline" onclick="cancelMyApplication('${myApplication.id}')">↩ Murojaatni bekor qilish</button>`;
     } else if (myApplication?.status === 'accepted') {
       primaryAction = `<button class="btn-outline" onclick="startAcceptedWork('${myApplication.id}')">▶ Ishni boshlash</button>`;
     } else if (myApplication?.status === 'in_progress') {
-      primaryAction = `<button class="btn-outline" disabled>🛠 Siz hozir bu ishda ishlayapsiz</button>`;
+      primaryAction = `<button class="btn-outline" disabled>Siz hozir bu ishda ishlayapsiz</button>`;
     } else if (myApplication?.status === 'completed') {
       primaryAction = `<button class="btn-outline" disabled>✅ Bu ish yakunlangan</button>`;
     } else if (myApplication && ['rejected', 'withdrawn', 'job_closed', 'expired'].includes(myApplication.status)) {
-      primaryAction = `<button class="btn-outline" ${job.status !== 'active' ? 'disabled' : ''} onclick="expressInterest()">🙋 Qayta murojaat</button>`;
+      primaryAction = `<button class="btn-outline" ${job.status !== 'active' ? 'disabled' : ''} onclick="expressInterest()">Qayta murojaat</button>`;
     }
     return `
       ${primaryAction}
-      <button class="btn-call-lg" onclick="callNumber('${escapeJsString(job.phone || '')}', '${escapeJsString(job.poster)}')">📞 Qo'ng'iroq qilish</button>`;
+      <button class="btn-call-lg" onclick="callNumber('${escapeJsString(job.phone || '')}', '${escapeJsString(job.poster)}')">Qo'ng'iroq qilish</button>`;
   }
   if (isAdminViewer) {
     return `
-      <button class="btn-outline" onclick="Toast.show('Moderator ko'rish rejimi.')">🛡 Moderator</button>
-      <button class="btn-call-lg" onclick="callNumber('${escapeJsString(job.phone || '')}', '${escapeJsString(job.poster)}')">📞 Aloqa</button>`;
+      <button class="btn-outline" onclick="Toast.show('Moderator ko'rish rejimi.')">Moderator</button>
+      <button class="btn-call-lg" onclick="callNumber('${escapeJsString(job.phone || '')}', '${escapeJsString(job.poster)}')">Aloqa</button>`;
   }
   return `
-    <button class="btn-outline" onclick="Toast.show('Ish beruvchi boshqa ish beruvchining e'loniga kira olmaydi.')">🔒 Yopiq</button>
-    <button class="btn-call-lg" disabled>📞 Faqat ishchilar uchun</button>`;
+    <button class="btn-outline" onclick="Toast.show('Ish beruvchi boshqa ish beruvchining e'loniga kira olmaydi.')">Yopiq</button>
+    <button class="btn-call-lg" disabled>Faqat ishchilar uchun</button>`;
 }
 
 function copyJobLink() {
@@ -2126,7 +2199,7 @@ function submitPost() {
         lng,
         duration: AppState.postDuration,
       });
-      document.getElementById('success-modal-desc').innerHTML = `E'loningiz <strong>${job.duration} soat</strong> davomida aktiv bo'ladi.`;
+      document.getElementById('success-modal-desc').innerHTML = `E'loningiz <strong>${job.duration} soat</strong> davomida faol bo'ladi.`;
     }
     document.getElementById('success-modal').classList.add('open');
     initHome();
@@ -2186,8 +2259,8 @@ function renderActivity() {
             </div>
             <div class="activity-meta">${formatRelative(app.createdAt)} oldin · ${escapeHtml(app.jobLocation)}</div>
             <div class="activity-actions">
-              <button class="mini-btn" onclick="callNumber('${escapeJsString(app.workerPhone || '')}', '${escapeJsString(app.workerName)}')">📞 Qo'ng'iroq</button>
-              <button class="mini-btn" onclick="openWhatsApp('${escapeJsString(app.workerPhone || '')}', '${escapeJsString(app.workerName)}')">💬 WhatsApp</button>
+              <button class="mini-btn" onclick="callNumber('${escapeJsString(app.workerPhone || '')}', '${escapeJsString(app.workerName)}')">Qo'ng'iroq</button>
+              <button class="mini-btn" onclick="openWhatsApp('${escapeJsString(app.workerPhone || '')}', '${escapeJsString(app.workerName)}')">WhatsApp</button>
               <button class="mini-btn accept" onclick="setApplicationStatus('${app.id}', 'accepted')">✅ Qabul qilish</button>
               <button class="mini-btn reject" onclick="setApplicationStatus('${app.id}', 'rejected')">✖ Rad etish</button>
             </div>
@@ -2205,10 +2278,10 @@ function renderActivity() {
             </div>
             <div class="activity-meta">Holat: ${statusLabel(app.status)} · ${escapeHtml(app.jobLocation)}</div>
             <div class="activity-actions">
-              <button class="mini-btn" onclick="openDetail(${app.jobId})">🔎 E'lon</button>
-              <button class="mini-btn" onclick="callNumber('${escapeJsString(app.workerPhone || '')}', '${escapeJsString(app.workerName)}')">📞 Aloqa</button>
-              <button class="mini-btn" onclick="openWhatsApp('${escapeJsString(app.workerPhone || '')}', '${escapeJsString(app.workerName)}')">💬 WhatsApp</button>
-              <button class="mini-btn accept" onclick="completeJobFromActivity(${app.jobId})">🏁 Bajarildi</button>
+              <button class="mini-btn" onclick="openDetail(${app.jobId})">E'lon</button>
+              <button class="mini-btn" onclick="callNumber('${escapeJsString(app.workerPhone || '')}', '${escapeJsString(app.workerName)}')">Aloqa</button>
+              <button class="mini-btn" onclick="openWhatsApp('${escapeJsString(app.workerPhone || '')}', '${escapeJsString(app.workerName)}')">WhatsApp</button>
+              <button class="mini-btn accept" onclick="completeJobFromActivity(${app.jobId})">Bajarildi</button>
             </div>
           </div>`).join('') : `<div class="empty-state compact"><div class="empty-title">Jarayon yo'q</div><div class="empty-desc">Nomzod qabul qilingandan keyin shu yerda ko'rinadi</div></div>`}
 
@@ -2227,10 +2300,10 @@ function renderActivity() {
             </div>
             <div class="activity-meta">${formatMoney(job.price)} so'm · ${escapeHtml(job.location)} · ${formatHoursLeft(job.expiresAt)}</div>
             <div class="activity-actions">
-              <button class="mini-btn" onclick="openDetail(${job.id})">🔎 Ochish</button>
+              <button class="mini-btn" onclick="openDetail(${job.id})">Ochish</button>
               ${job.status === 'active' ? `<button class="mini-btn" onclick="editJobFromList(${job.id})">✏️ Tahrir</button>` : ''}
-              ${job.status === 'active' ? `<button class="mini-btn" onclick="duplicateJobFromList(${job.id})">📄 Nusxa</button>` : ''}
-              ${job.status === 'active' ? `<button class="mini-btn reject" onclick="closeJobFromList(${job.id})">🛑 Yopish</button>` : `<button class="mini-pill">🙋 ${pendingCount} nomzod</button>`}
+              ${job.status === 'active' ? `<button class="mini-btn" onclick="duplicateJobFromList(${job.id})">Nusxa</button>` : ''}
+              ${job.status === 'active' ? `<button class="mini-btn reject" onclick="closeJobFromList(${job.id})">Yopish</button>` : `<button class="mini-pill">${pendingCount} nomzod</button>`}
               ${contract ? `<button class="mini-btn accept" onclick="openReviewPrompt('${contract.id}', '${contract.workerId}')">⭐ Ishchini baholash</button>` : ''}
             </div>
           </div>`;
@@ -2257,8 +2330,8 @@ function renderActivity() {
             </div>
             <div class="activity-meta">${formatRelative(app.createdAt)} oldin · ${escapeHtml(app.jobLocation)}</div>
             <div class="activity-actions">
-              <button class="mini-btn" onclick="openDetail(${app.jobId})">🔎 E'lonni ochish</button>
-              <button class="mini-btn" onclick="callNumber('${escapeJsString(app.employerPhone || '')}', '${escapeJsString(app.employerName)}')">📞 Qo'ng'iroq</button>
+              <button class="mini-btn" onclick="openDetail(${app.jobId})">E'lonni ochish</button>
+              <button class="mini-btn" onclick="callNumber('${escapeJsString(app.employerPhone || '')}', '${escapeJsString(app.employerName)}')">Qo'ng'iroq</button>
               ${app.status === 'pending' ? `<button class="mini-btn reject" onclick="cancelMyApplication('${app.id}')">↩ Bekor qilish</button>` : ''}
               ${app.status === 'accepted' ? `<button class="mini-btn accept" onclick="startAcceptedWork('${app.id}')">▶ Start</button>` : ''}
               ${app.status === 'completed' ? `<button class="mini-btn accept" onclick="rateEmployerForApplication('${app.id}')">⭐ Baholash</button>` : ''}
@@ -2340,11 +2413,11 @@ function renderSavedJobs() {
         </div>
         <div class="activity-meta">${formatMoney(job.price)} so'm · ${escapeHtml(job.location)}</div>
         <div class="activity-actions">
-          <button class="mini-btn" onclick="openDetail(${job.id})">🔎 Ochish</button>
-          <button class="mini-btn reject" onclick="removeSavedJob(${job.id})">🗑 Olib tashlash</button>
+          <button class="mini-btn" onclick="openDetail(${job.id})">Ochish</button>
+          <button class="mini-btn reject" onclick="removeSavedJob(${job.id})">Olib tashlash</button>
         </div>
       </div>`).join('')}
-    </div>` : `<div class="empty-state"><div class="empty-icon">🔖</div><div class="empty-title">Saqlangan e'lonlar yo'q</div><div class="empty-desc">Yoqqan e'loningizni saqlab keyinroq qaytib ko'rishingiz mumkin</div></div>`;
+    </div>` : `<div class="empty-state"><div class="empty-icon"></div><div class="empty-title">Saqlangan e'lonlar yo'q</div><div class="empty-desc">Yoqqan e'loningizni saqlab keyinroq qaytib ko'rishingiz mumkin</div></div>`;
 }
 
 function removeSavedJob(jobId) {
@@ -2367,7 +2440,7 @@ function renderAdmin() {
   const list = document.getElementById('admin-list');
   if (!list) return;
   if (!Store.isAdminUser(AppState.user)) {
-    list.innerHTML = `<div class="empty-state"><div class="empty-icon">🛡️</div><div class="empty-title">Admin ruxsati kerak</div><div class="empty-desc">Bu bo‘lim lokal moderatsiya uchun ajratilgan. Productionda backend admin qoidalari kerak bo‘ladi.</div></div>`;
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon"></div><div class="empty-title">Admin ruxsati kerak</div><div class="empty-desc">Bu bo‘lim lokal moderatsiya uchun ajratilgan. Productionda backend admin qoidalari kerak bo‘ladi.</div></div>`;
     return;
   }
   const jobs = Store.getAllJobs();
@@ -2398,7 +2471,7 @@ function renderAdmin() {
           </div>
           <div class="activity-meta">${formatRelative(report.createdAt)} oldin · ${escapeHtml(report.employerName)}</div>
           <div class="activity-actions">
-            <button class="mini-btn" onclick="openDetail(${report.jobId})">🔎 E'lon</button>
+            <button class="mini-btn" onclick="openDetail(${report.jobId})">E'lon</button>
             ${report.status === 'open' ? `<button class="mini-btn accept" onclick="resolveReport('${report.id}')">✅ Yopish</button>` : `<button class="mini-pill">✔ Ko‘rib chiqilgan</button>`}
           </div>
         </div>`).join('') : `<div class="empty-state compact"><div class="empty-title">Hisobotlar yo'q</div><div class="empty-desc">Foydalanuvchi xabar berganda shu yerda ko'rinadi</div></div>`}
@@ -2415,7 +2488,7 @@ function renderAdmin() {
           </div>
           <div class="activity-meta">${formatMoney(job.price)} so'm · ${escapeHtml(job.location)}</div>
           <div class="activity-actions">
-            <button class="mini-btn" onclick="openDetail(${job.id})">🔎 Ochish</button>
+            <button class="mini-btn" onclick="openDetail(${job.id})">Ochish</button>
           </div>
         </div>`).join('')}
     </div>`;
