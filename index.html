@@ -481,6 +481,7 @@
     }
     .telegram-widget-host { min-height: 4px; }
     .telegram-auth-meta { font-size: 11px; color: var(--muted); line-height: 1.5; }
+    .telegram-auth-btn-wrap { display: block; }
 
     /* Fields */
     .field-label {
@@ -1558,7 +1559,9 @@
             </div>
             <div id="telegram-auth-status" class="telegram-auth-status">Telegram login sozlanmoqda...</div>
             <div id="telegram-login-widget" class="telegram-widget-host"></div>
-            <button class="btn-primary telegram-login-btn" id="btn-telegram-login" onclick="startTelegramLogin()">Telegram orqali kirish</button>
+            <div class="telegram-auth-btn-wrap" id="telegram-auth-btn-wrap">
+              <button class="btn-primary telegram-login-btn" id="btn-telegram-login" onclick="startTelegramLogin()">Telegram orqali kirish</button>
+            </div>
             <div class="telegram-auth-meta" id="telegram-auth-meta">Bot username va auth URL kiritilgach, shu ekrandan to'g'ridan-to'g'ri login ishlaydi.</div>
           </div>
 

@@ -10,7 +10,7 @@ const SETTINGS = {
   activeJobLimit: 3,
   defaultExpiryHours: 24,
   closedRetentionHours: 72,
-  appVersion: 'real-pilot-v30',
+  appVersion: 'real-pilot-v31',
   demoAdminPhoneDigits: [],
 };
 

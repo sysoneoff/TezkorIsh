@@ -876,7 +876,7 @@ async function renderTelegramLoginOptions() {
   const widgetHost = document.getElementById('telegram-login-widget');
   const btn = document.getElementById('btn-telegram-login');
   const localCard = document.querySelector('.telegram-auth-card.muted');
-  const btnWrap = btn?.closest('.telegram-auth-btn-wrap') || btn?.parentElement;
+  const btnWrap = btn?.closest('.telegram-auth-btn-wrap') || document.getElementById('telegram-auth-btn-wrap');
   if (!statusEl || !metaEl || !widgetHost || !btn) return;
 
   const allowLocal = Boolean(PILOT_CONFIG?.allowLocalFallback) && !isServerPilotMode();
@@ -892,7 +892,11 @@ async function renderTelegramLoginOptions() {
 
   let liveCfg = null;
   if (isServerPilotMode()) {
-    liveCfg = await AuthAPI.telegramConfig();
+    try {
+      liveCfg = await AuthAPI.telegramConfig();
+    } catch (error) {
+      console.warn('Telegram config fetch failed:', error);
+    }
   }
   const botUsername = cfg.botUsername || liveCfg?.botUsername || '';
   const widgetCallbackUrl = cfg.widgetCallbackUrl || liveCfg?.callbackUrl || '';
@@ -947,7 +951,7 @@ async function renderTelegramLoginOptions() {
   }
 
   statusEl.textContent = 'Telegram login hali sozlanmagan';
-  metaEl.textContent = 'Server .env faylida TELEGRAM_BOT_TOKEN va TELEGRAM_BOT_USERNAME kiriting.';
+  metaEl.textContent = "Server konfiguratsiyasida TELEGRAM_BOT_USERNAME va login URL/callback yo'q. Render env va deployni tekshiring.";
 }
 
 async function startTelegramLogin() {

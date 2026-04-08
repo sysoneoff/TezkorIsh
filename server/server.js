@@ -43,7 +43,7 @@ function defaultDb() {
     updatedAt: nowIso(),
     storage: {
       global: {
-        'tezkorish.meta': { appVersion: 'real-pilot-v30', firstInstalledAt: Date.now(), seedInitialized: true },
+        'tezkorish.meta': { appVersion: 'real-pilot-v31', firstInstalledAt: Date.now(), seedInitialized: true },
         'tezkorish.jobs': [],
         'tezkorish.applications': [],
         'tezkorish.savedJobs': [],
@@ -377,7 +377,7 @@ function mergeGlobalStorageValue(db, key, value, authUser) {
     const incoming = value && typeof value === 'object' ? value : {};
     db.storage.global[key] = {
       ...current,
-      appVersion: 'real-pilot-v30',
+      appVersion: 'real-pilot-v31',
       firstInstalledAt: Number(incoming.firstInstalledAt || current.firstInstalledAt || Date.now()),
       lastOpenedAt: Number(incoming.lastOpenedAt || current.lastOpenedAt || Date.now()),
       seedInitialized: true,
@@ -781,7 +781,7 @@ async function handleApi(req, res, url) {
     const userScoped = session?.userId ? (db.storage.users[session.userId] || {}) : {};
     return sendJson(res, 200, {
       ok: true,
-      appVersion: db.storage.global['tezkorish.meta']?.appVersion || 'real-pilot-v30',
+      appVersion: db.storage.global['tezkorish.meta']?.appVersion || 'real-pilot-v31',
       authenticated: Boolean(authUser),
       authUser,
       global: db.storage.global,
